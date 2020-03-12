@@ -2,8 +2,8 @@ module alu(
     input wire [2:0]    op,   //ALU Operation
     input wire [4:0]    src_data,
     input wire [4:0]    dest_data,
-    //input wire          ext,  //CB Extension instructions
-    //input wire          misc, //Non-arithmetic/logic instructions
+    input wire          ext,  //CB Extension instructions
+    input wire          misc, //Non-arithmetic/logic instructions
     output reg [15:0]   res  //7:0 for 8-bit instructions
     );
 

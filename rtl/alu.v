@@ -119,6 +119,7 @@ module alu(
                 //dest = 3'b111 (A register)
                 case(op)
                     ADD: begin
+                        res = src_data + dest_data;
                     end
 
                     ADC: begin
@@ -131,12 +132,15 @@ module alu(
                     end
 
                     AND: begin
+                        res = src_data & dest_data;
                     end
 
                     XOR: begin
+                        res = src_data ^ dest_data;
                     end
 
                     OR: begin
+                        res = src_data | dest_data;
                     end
 
                     CP: begin

@@ -7,7 +7,7 @@ module testing(
     output wire [7:0] an
     );
 
-    localparam WORD_SIZE = 4;
+    localparam WORD_SIZE = 8;
     localparam DATA_SIZE = WORD_SIZE * 8;
 
     reg [15:0] divider;
@@ -15,14 +15,14 @@ module testing(
     reg [63:0] scroll_counter;
     reg [31:0] scroll;
 
-    //reg [DATA_SIZE - 1:0] data2 = 120'h313233343536373839414243444546;
-    reg [31:0] data2 = 32'h01234567;
+    reg [DATA_SIZE - 1:0] data2 = 120'h313233343536373839414243444546;
+    //reg [31:0] data2 = 32'h01234567;
     reg [WORD_SIZE * 8 - 1:0] out_buffer;
 
     //anode select
     assign an = ~anode_decode(anode_counter);
     //assign out = ~ascii_decode(out_buffer[(anode_counter * WORD_SIZE + (WORD_SIZE - 1)) -: WORD_SIZE]);
-    assign out = ~hex_decode(out_buffer[(anode_counter * WORD_SIZE + (WORD_SIZE - 1)) -: WORD_SIZE]);
+    assign out = ~ascii_decode(out_buffer[(anode_counter * WORD_SIZE + (WORD_SIZE - 1)) -: WORD_SIZE]);
 
     function [7:0] anode_decode;
         input [2:0] code;
@@ -155,9 +155,9 @@ module testing(
             end
         end
         //nibble select
-        //out_buffer <= data[DATA_SIZE + (scroll * WORD_SIZE) - 1 -: 8 * WORD_SIZE];
-        out_buffer <= data;
-        //out <= ~ascii_decode(data[(anode_counter - scroll) * WORD_SIZE + (WORD_SIZE - 1) -: WORD_SIZE]);
+        out_buffer <= data2[DATA_SIZE + (scroll * WORD_SIZE) - 1 -: 8 * WORD_SIZE];
+        //out_buffer <= data;
+        //out_buffer <= ~ascii_decode(data2[(anode_counter - scroll) * WORD_SIZE + (WORD_SIZE - 1) -: WORD_SIZE]);
     end
 
 endmodule
