@@ -1,0 +1,39 @@
+[*]
+[*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
+[*] Thu Mar 12 17:22:32 2020
+[*]
+[dumpfile] "/mnt/d/Git/GameBuddy-Verilog/data/dumpfile.vcd"
+[dumpfile_mtime] "Thu Mar 12 17:18:59 2020"
+[dumpfile_size] 112064
+[savefile] "/mnt/d/Git/GameBuddy-Verilog/data/test.gtkw"
+[timestart] 0
+[size] 1000 600
+[pos] 1121 245
+*0.000000 0 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb.
+[sst_width] 191
+[signals_width] 142
+[sst_expanded] 1
+[sst_vpaned_height] 157
+@22
+tb.alu1.dest_data[4:0]
+@28
+tb.alu1.ext
+tb.alu1.misc
+@802029
+^1 /mnt/d/Git/GameBuddy-Verilog/op.alias
+tb.alu1.op[2:0]
+@2029
+^1 /mnt/d/Git/GameBuddy-Verilog/op.alias
+(0)tb.alu1.op[2:0]
+^1 /mnt/d/Git/GameBuddy-Verilog/op.alias
+(1)tb.alu1.op[2:0]
+^1 /mnt/d/Git/GameBuddy-Verilog/op.alias
+(2)tb.alu1.op[2:0]
+@1001201
+-group_end
+@22
+tb.alu1.res[15:0]
+tb.alu1.src_data[4:0]
+[pattern_trace] 1
+[pattern_trace] 0
