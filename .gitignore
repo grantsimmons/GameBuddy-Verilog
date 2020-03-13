@@ -1,0 +1,4 @@
+data/*.vcd
+*.fst
+*.swp
+*.log
