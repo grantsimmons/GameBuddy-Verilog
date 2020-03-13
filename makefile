@@ -1,15 +1,28 @@
+#DIRS
+SIM_DIR = sim
+RTL_DIR = rtl
+RPTS_DIR = rpts
+DATA_DIR = data
+ALIAS_DIR = alias
+LOGS_DIR = logs
+SCRIPTS_DIR = scripts
+
+
 #SIMULATOR/COMPILER (IVERILOG) PARAMS
 CC = iverilog
 ASM = vvp
 RUNNAME = run
-RUNFILES = rtl/alu.v
-TESTBENCH = sim/tb.v
+#RUNFILES = rtl/alu.v
+RUNFILES = $(RTL_DIR)/7SD_Testing.srcs/sources_1/new/alu.v
+TESTBENCH = $(SIM_DIR)/tb_revised.v
 CFLAGS = -o $(RUNNAME) -Wall -Winfloop -g2012
-TESTBENCHOUT = data/dumpfile.vcd
+TESTBENCHOUT = $(DATA_DIR)/dumpfile.vcd
 
 #WAVEFORM VIEWER (GTKWAVE) PARAMS
 WAVEVIEWER = gtkwave
-VFLAGS = -O logs/$@.log
+VFLAGS = -O $(LOGS_DIR)/$@.log -o
+#WAVEFORM SAVE FILE
+VIEW = $(DATA_DIR)/test.gtkw
 
 #SYNTHESIS (YOSYS) PARAMS
 SYNTHESIS = yosys
@@ -20,28 +33,28 @@ SYNTHBACKENDEXT = il
 else ifeq ($(SYNTHBACKEND), verilog)
 SYNTHBACKENDEXT = v
 endif
-SYNTHFILE = data/synthesize.$(SYNTHBACKENDEXT)
+SYNTHFILE = $(DATA_DIR)/synthesize.$(SYNTHBACKENDEXT)
 SYNTHOUT = -o $(SYNTHFILE) -b $(SYNTHBACKEND)
-SYNTHSCRIPT = scripts/synthesize.ys
+SYNTHSCRIPT = $(SCRIPTS_DIR)/synthesize.ys
 SYNTHFLAGS = -Q -q
-SYNTHLOG = -l logs/$@.log -t
-BDSHOW = show -format dot -viewer xdot -prefix data/show
-DOT = data/show.dot
+SYNTHLOG = -l $(LOGS_DIR)/$@.log -t
+BDSHOW = show -format dot -viewer xdot -prefix $(DATA_DIR)/show
+DOT = $(DATA_DIR)/show.dot
 DOTVIEWER = xdot
 
-proj:
-	mkdir rpts logs data
-	
-$(RUNNAME): $(RUNFILES) $(TESTBENCH)
+$(RUNNAME): $(RUNFILES) $(TESTBENCH) proj
 	$(CC) $(CFLAGS) $(RUNFILES) $(TESTBENCH)
 	$(ASM) $(RUNNAME) > rpts/$(RUNNAME).rpt
+
+proj:
+	mkdir -p $(SIM_DIR) $(RTL_DIR) $(RPTS_DIR) $(DATA_DIR) $(ALIAS_DIR) $(LOGS_DIR) $(SCRIPTS_DIR)
 
 $(RUNNAME)_notb: $(RUNFILES)
 	$(CC) $(CFLAGS) $(RUNFILES)
 	$(ASM) $(RUNNAME) > rpts/$(RUNNAME)_notb.rpt
 
 wave: $(TESTBENCHOUT)
-	$(WAVEVIEWER) $(TESTBENCHOUT) $(VFLAGS) &
+	$(WAVEVIEWER) $(TESTBENCHOUT) $(VFLAGS) $(VIEW) &
 
 synth: $(RUNFILES)
 	$(SYNTHESIS) $(RUNFILES) $(SYNTHSCRIPT) $(SYNTHOUT) $(SYNTHFLAGS) $(SYNTHLOG)
