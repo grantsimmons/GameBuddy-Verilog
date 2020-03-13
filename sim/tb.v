@@ -1,12 +1,22 @@
 `timescale 1ns / 1ns
 module tb;
     reg clk;
-    reg [2:0] op;
-    reg [4:0] src_data;
-    reg [4:0] dest_data;
+
+    localparam DATA_SIZE = 5;
+    localparam OP_SIZE = 3;
+    localparam RES_SIZE = 16;
+    reg [OP_SIZE - 1:0] op;
+    reg [DATA_SIZE - 1:0] src_data;
+    reg [DATA_SIZE - 1:0] dest_data;
     reg ext;
     reg misc;
-    wire [15:0] res;
+    wire [RES_SIZE - 1:0] res;
+
+    wire [ 2 * DATA_SIZE + OP_SIZE + RES_SIZE - 1:0] res_vector;
+
+    always @(*) begin
+        assign res_vector = {op, src_data, dest_data, res};
+    end
     
     alu alu1(.op(op), .src_data(src_data), .dest_data(dest_data), .ext(ext), .misc(misc), .res(res));
 
