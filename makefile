@@ -7,13 +7,12 @@ ALIAS_DIR = alias
 LOGS_DIR = logs
 SCRIPTS_DIR = scripts
 
-
 #SIMULATOR/COMPILER (IVERILOG) PARAMS
 CC = iverilog
 ASM = vvp
 RUNNAME = run
 #RUNFILES = rtl/alu.v
-RUNFILES = $(RTL_DIR)/7SD_Testing.srcs/sources_1/new/alu.v
+RUNFILES = fpga/7SD_Testing.srcs/sources_1/new/alu.v
 TESTBENCH = $(SIM_DIR)/tb_revised.v
 CFLAGS = -o $(RUNNAME) -Wall -Winfloop -g2012
 TESTBENCHOUT = $(DATA_DIR)/dumpfile.vcd
@@ -44,14 +43,14 @@ DOTVIEWER = xdot
 
 $(RUNNAME): $(RUNFILES) $(TESTBENCH) proj
 	$(CC) $(CFLAGS) $(RUNFILES) $(TESTBENCH)
-	$(ASM) $(RUNNAME) > rpts/$(RUNNAME).rpt
+	$(ASM) $(RUNNAME) > $(RPTS_DIR)/$(RUNNAME).rpt
 
 proj:
 	mkdir -p $(SIM_DIR) $(RTL_DIR) $(RPTS_DIR) $(DATA_DIR) $(ALIAS_DIR) $(LOGS_DIR) $(SCRIPTS_DIR)
 
 $(RUNNAME)_notb: $(RUNFILES)
 	$(CC) $(CFLAGS) $(RUNFILES)
-	$(ASM) $(RUNNAME) > rpts/$(RUNNAME)_notb.rpt
+	$(ASM) $(RUNNAME) > $(RPTS_DIR)/$(RUNNAME)_notb.rpt
 
 wave: $(TESTBENCHOUT)
 	$(WAVEVIEWER) $(TESTBENCHOUT) $(VFLAGS) $(VIEW) &
@@ -60,7 +59,7 @@ synth: $(RUNFILES)
 	$(SYNTHESIS) $(RUNFILES) $(SYNTHSCRIPT) $(SYNTHOUT) $(SYNTHFLAGS) $(SYNTHLOG)
 
 netlist: $(SYNTHFILE)
-	$(SYNTHESIS) -f $(SYNTHBACKEND) $(SYNTHFILE) -o data/synthesize.v $(SYNTHFLAGS) $(SYNTHLOG)
+	$(SYNTHESIS) -f $(SYNTHBACKEND) $(SYNTHFILE) -o $(DATA_DIR)/synthesize.v $(SYNTHFLAGS) $(SYNTHLOG)
 
 bd: $(RUNFILES)
 	$(SYNTHESIS) -f $(SYNTHBACKEND) $(SYNTHFILE) -p "$(BDSHOW)" $(SYNTHFLAGS) $(SYNTHLOG)

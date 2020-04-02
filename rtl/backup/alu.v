@@ -1,10 +1,14 @@
 module alu(
     input wire [2:0]    op,   //ALU Operation
-    input wire [4:0]    src_data,
-    input wire [4:0]    dest_data,
+    input wire [2:0]    src,  //Source register (Needed?)
+    input wire [2:0]    dest, //Destination Register
+    input wire [7:0]    src_data,
+    input wire [7:0]    dest_data,
+    input wire          size, //0 = 8-bit; 1 = 16-bit
     input wire          ext,  //CB Extension instructions
     input wire          misc, //Non-arithmetic/logic instructions
-    output reg [15:0]   res  //7:0 for 8-bit instructions
+    output reg [15:0]   res,  //7:0 for 8-bit instructions
+    output reg [3:0]    flags //Flag results > Flag register
     );
 
     //Base instructions
@@ -67,34 +71,27 @@ module alu(
                 //dest = instruction[2:0]
                 case(op)
                     RLC: begin
-                        res = {dest_data << src_data, dest_data[4]};
                     end
 
                     RRC: begin
-                        res = {dest_data[0], (dest_data >> src_data)};
                     end
 
                     RL: begin
-                        res = {(dest_data << src_data), dest_data[4]};
                     end
 
                     RR: begin
-                        res = {dest_data[0], (dest_data >> src_data)};
                     end
 
                     SLA: begin
-                        res = {(dest_data << src_data), 1'b1};
                     end
 
                     SRA: begin
-                        res = {dest_data[4], (dest_data >> src_data)};
                     end
 
                     SWAP: begin
                     end
 
                     SRL: begin
-                        res = {1'b0, (dest_data >> src_data)};
                     end
                 endcase
             end
@@ -126,15 +123,12 @@ module alu(
                     end
 
                     ADC: begin
-                        res = src_data + dest_data;
                     end
 
                     SUB: begin
-                        res = src_data - dest_data;
                     end
 
                     SBC: begin
-                        res = src_data - dest_data;
                     end
 
                     AND: begin
