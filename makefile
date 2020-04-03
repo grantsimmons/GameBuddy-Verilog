@@ -11,9 +11,10 @@ SCRIPTS_DIR = scripts
 CC = iverilog
 ASM = vvp
 RUNNAME = run
-#RUNFILES = rtl/alu.v
-RUNFILES = fpga/7SD_Testing.srcs/sources_1/new/alu.v
-TESTBENCH = $(SIM_DIR)/tb_revised.v
+RUNFILES = rtl/decode.v rtl/register_file_new.v rtl/register.v rtl/top.v
+#RUNFILES = fpga/7SD_Testing.srcs/sources_1/new/alu.v
+#TESTBENCH = $(SIM_DIR)/tb_revised.v
+TESTBENCH = $(SIM_DIR)/top_tb.v
 CFLAGS = -o $(RUNNAME) -Wall -Winfloop -g2012
 TESTBENCHOUT = $(DATA_DIR)/dumpfile.vcd
 
@@ -53,7 +54,8 @@ $(RUNNAME)_notb: $(RUNFILES)
 	$(ASM) $(RUNNAME) > $(RPTS_DIR)/$(RUNNAME)_notb.rpt
 
 wave: $(TESTBENCHOUT)
-	$(WAVEVIEWER) $(TESTBENCHOUT) $(VFLAGS) $(VIEW) &
+	$(WAVEVIEWER) $(TESTBENCHOUT) $(VFLAGS) &
+	#$(WAVEVIEWER) $(TESTBENCHOUT) $(VFLAGS) $(VIEW) &
 
 synth: $(RUNFILES)
 	$(SYNTHESIS) $(RUNFILES) $(SYNTHSCRIPT) $(SYNTHOUT) $(SYNTHFLAGS) $(SYNTHLOG)
