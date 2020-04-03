@@ -2,58 +2,28 @@
 
 module top(
     input wire clk,
-    input wire [2:0] op,
-    //input wire [4:0] src_data,
-    //input wire [4:0] dest_data,
-    input wire [2:0] reg_sel_1,
-    (* clock_buffer_type="none" *) input wire sel_en_1,
-    input wire [2:0] reg_sel_2,
-    input wire sel_en_2,
-    input wire [3:0] data,
-    (* clock_buffer_type="none" *) input wire rd_en,
-    //input wire ext,
-    //input wire misc,
-    output wire [6:0] out,
-    output wire [7:0] an
+    input wire rst,
+    input wire [7:0] op,
+    input wire [7:0] testing_data
     );
 
-    wire [15:0] res;
-
-    reg [2:0] reg_sel;
-    reg wr_en;
-
-    wire [7:0] reg_out;
-
-    reg [7:0] reg_1_data_copy;
-    reg [7:0] reg_2_data_copy;
-
+    wire [1:0] src_sel;
+    decode d1(.clk(clk), .rst(rst), .op(op), .reg_rd_en(r1.rd_en), .reg_wr_en(r1.wr_en), .reg_rd_addr(r1.rd_sel), .reg_wr_addr(r1.wr_sel), .reg_src_sel(src_sel));
+    reg [7:0] reg_data_in;
+    wire [7:0] reg_data_out;
+    register_file_new r1(.clk(clk), .rst(rst), .wr_sel(d1.reg_wr_addr), .rd_sel(d1.reg_rd_addr), .wr_en(d1.reg_wr_en), .rd_en(d1.reg_rd_en), .data_in(reg_data_in), .data_out(reg_data_out));
 
     always @(*) begin
-        if (~rd_en) begin
-            if(sel_en_1) begin
-                reg_sel <= reg_sel_1;
-                wr_en <= 1'b1;
+        case(src_sel)
+            2'b00: begin
+                reg_data_in = reg_data_out;
             end
-            if(sel_en_2) begin
-                reg_sel <= reg_sel_2;
-                wr_en <= 1'b1;
+            2'b11: begin //Testbench input
+                reg_data_in = testing_data[7:0];
             end
-            if(~(sel_en_1) & ~(sel_en_2))
-                wr_en <= 1'b0;
-            if(sel_en_1 & sel_en_2)
-                wr_en <= 1'b0;
-        end else begin
-            if(sel_en_1)
-                reg_1_data_copy <= reg_out;
-            if(sel_en_2)
-                reg_2_data_copy <= reg_out;
-        end
+            default: begin
+                reg_data_in = reg_data_out;
+            end
+        endcase
     end
-
-
-    register_file r1(.clk(clk), .reg_sel(reg_sel), .data_in(data), .wr_en(wr_en), .rd_en(rd_en), .data_out(reg_out));
-    //alu a1(.op(op), .src_data(src_data), .dest_data(dest_data), .ext(ext), .misc(misc), .res(res));
-    alu a1(.op(op), .src_data(reg_1_data_copy), .dest_data(reg_2_data_copy), .res(res));
-    testing t1(.clk(clk), .data(res), .out(out), .an(an));
-
 endmodule

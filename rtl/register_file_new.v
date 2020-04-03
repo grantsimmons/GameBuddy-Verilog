@@ -1,11 +1,12 @@
-module register_file(
+module register_file_new(
     //Inputs
     input wire          clk,
-    input wire [7:0]    data_in,
+    input wire          rst,
+    input wire [2:0]    wr_sel,
+    input wire [2:0]    rd_sel,
     input wire          wr_en,
     input wire          rd_en,
-    input wire [2:0]    wr_reg_sel,
-    input wire [2:0]    rd_reg_sel,
+    input wire [7:0]    data_in,
     //Outputs
     output reg [7:0]    data_out
     );
@@ -27,7 +28,7 @@ module register_file(
                demux_data_h,
                demux_data_l;
 
-    wire [7:0]  rdmux_data_out_a,
+    wire [7:0] rdmux_data_out_a,
                rdmux_data_out_b,
                rdmux_data_out_c,
                rdmux_data_out_d,
@@ -43,17 +44,17 @@ module register_file(
                demux_wr_en_h,
                demux_wr_en_l;
 
-    register a(.clk(clk), .wr_en(demux_wr_en_a), .data_in(demux_data_a), .data_out(rdmux_data_out_a));
-    register b(.clk(clk), .wr_en(demux_wr_en_b), .data_in(demux_data_b), .data_out(rdmux_data_out_b));
-    register c(.clk(clk), .wr_en(demux_wr_en_c), .data_in(demux_data_c), .data_out(rdmux_data_out_c));
-    register d(.clk(clk), .wr_en(demux_wr_en_d), .data_in(demux_data_d), .data_out(rdmux_data_out_d));
-    register e(.clk(clk), .wr_en(demux_wr_en_e), .data_in(demux_data_e), .data_out(rdmux_data_out_e));
-    register h(.clk(clk), .wr_en(demux_wr_en_h), .data_in(demux_data_h), .data_out(rdmux_data_out_h));
-    register l(.clk(clk), .wr_en(demux_wr_en_l), .data_in(demux_data_l), .data_out(rdmux_data_out_l));
+    register a(.clk(clk), .rst(rst), .wr_en(demux_wr_en_a), .data_in(demux_data_a), .data_out(rdmux_data_out_a));
+    register b(.clk(clk), .rst(rst), .wr_en(demux_wr_en_b), .data_in(demux_data_b), .data_out(rdmux_data_out_b));
+    register c(.clk(clk), .rst(rst), .wr_en(demux_wr_en_c), .data_in(demux_data_c), .data_out(rdmux_data_out_c));
+    register d(.clk(clk), .rst(rst), .wr_en(demux_wr_en_d), .data_in(demux_data_d), .data_out(rdmux_data_out_d));
+    register e(.clk(clk), .rst(rst), .wr_en(demux_wr_en_e), .data_in(demux_data_e), .data_out(rdmux_data_out_e));
+    register h(.clk(clk), .rst(rst), .wr_en(demux_wr_en_h), .data_in(demux_data_h), .data_out(rdmux_data_out_h));
+    register l(.clk(clk), .rst(rst), .wr_en(demux_wr_en_l), .data_in(demux_data_l), .data_out(rdmux_data_out_l));
 
     always @(*) begin
         //DEMUX
-        case(reg_sel)
+        case(wr_sel)
             REG_A: begin
                 demux_data_a = data_in;
                 demux_data_b = 0;
@@ -186,7 +187,7 @@ module register_file(
 
         //MUX
         if(rd_en) begin
-            case(reg_sel)
+            case(rd_sel)
                 REG_A: begin
                     data_out = rdmux_data_out_a;
                 end
