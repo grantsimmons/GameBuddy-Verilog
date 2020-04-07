@@ -2,7 +2,7 @@ module decode(
     //Inputs
     input wire clk,
     input wire rst,
-    input wire [7:0] op,
+    input wire [7:0] curr_op,
     //Outputs
     //Control Signals
     output reg reg_rd_en,
@@ -13,8 +13,38 @@ module decode(
 
     );
 
+    reg [4:0] cycle, next_cycle; //3 for Max M-Cycle count, 2 for T-Cycle count
+    wire [5:0] next_cycle_high;
+    wire [3:0] m_cycle;
+    wire [1:0] t_cycle;
+    reg hold;
+    
+    assign next_cycle_high = {1'b0, cycle} + 1'b1;
+    assign m_cycle = cycle[4:2];
+    assign t_cycle = cycle[1:0];
+
+    reg [4:0] m_count; //The number of M-Cycles in current instruction
+
+    always @(posedge clk or negedge rst) begin
+        if(~rst) begin
+            //reset values
+            m_count = 1'b0;
+            cycle = 5'b0;
+            next_cycle = 5'b0;
+            hold = 1'b1;
+        end
+        else begin
+            if(hold) begin
+                hold <= 1'b0;
+            end
+            else begin
+                cycle <= next_cycle;
+            end
+        end
+    end
+
     wire prefix;
-    assign prefix = op[7:6];
+    assign prefix = curr_op[7:6];
 
     //FIXME: Make localparams global
     //Register Encodings
@@ -34,36 +64,56 @@ module decode(
     localparam DEBUG = 2'b11;
 
     always @(*) begin
+        if(next_cycle_high[4:2] == m_count) begin
+            next_cycle <= next_cycle_high & 2'b11;
+        end else begin
+            next_cycle <= next_cycle_high;
+        end
+        //Set Default Control Values
+        reg_wr_en = 1'b0;
+        reg_rd_en = 1'b0;
+
         case(prefix)
             00: begin
-                reg_wr_addr <= op[5:3]; //Destination
-                reg_wr_en = 1'b1; //Might need to be synced with clock?
-                reg_src_sel = DEBUG;
+                m_count <= 1'b1;
             end
+
             01: begin
-                if(op[5:3] != 3'b110) begin
+                //LD: 01(3:dest)(3:src)
+                if(curr_op[5:3] != 3'b110) begin
                     //Load to reg
-                    reg_rd_addr <= op[2:0]; //Source
-                    reg_wr_addr <= op[5:3]; //Destination
+                    m_count <= 1'b1;
+                    reg_rd_addr <= curr_op[2:0]; //Source
+                    reg_wr_addr <= curr_op[5:3]; //Destination
                     reg_wr_en = 1'b1; //Might need to be synced with clock?
                     reg_rd_en = 1'b1;
-                    reg_src_sel = SBUS;
+                    if(curr_op[2:0] != 3'b110) begin
+                        reg_src_sel = SBUS;
+                    end
+                    else begin
+                        reg_src_sel = MEM;
+                    end
                 end
-                else if(op[2:0] != 3'b110) begin
+                else if(curr_op[2:0] != 3'b110) begin
                     //Load to memory bus (HL)
                 end
                 else begin
                     //Halt
                 end
             end
+
             10: begin
                 //8-bit Accumulator Arithmetic and logic
                 //op[5:3] = operation
                 //op[2:0] = reg select
             end
+
             11: begin
                 //Memory Operations
                 //Flow Control
+                reg_wr_addr <= curr_op[5:3]; //Destination
+                reg_wr_en = 1'b1; //Might need to be synced with clock?
+                reg_src_sel = DEBUG;
             end
         endcase
     end

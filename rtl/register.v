@@ -14,8 +14,9 @@ module register(
 		if(~rst) begin
 			data <= 0;
 		end
-        if(wr_en)
+		if(wr_en) begin
             data <= data_in;
+		end
     end
 
 

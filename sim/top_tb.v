@@ -16,9 +16,9 @@ module tb;
 
     reg [31:0] vectornum, errors; //Bookkeeping
 
-    reg [ OP_SIZE + RES_SIZE - 1:0] testvectors[4:0]; //Test vector array
+    reg [ OP_SIZE + RES_SIZE - 1:0] testvectors[6:0]; //Test vector array
 
-	top dut(.clk(clk), .rst(rst), .testing_data(dest_data), .op(op));
+	top dut(.clk(clk), .rst(rst), .testing_data(dest_data), .op_next(op));
 
 	assign res =   {dut.r1.a.data,
 					dut.r1.b.data,
