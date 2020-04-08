@@ -1,27 +1,32 @@
 `timescale 1ns / 1ps
 
 module top(
-    input wire clk,
-    input wire rst,
-    input wire [7:0] op_next,
-    input wire [7:0] testing_data
+    //Inputs
+    input wire          clk,
+    input wire          rst,
+    input wire [7:0]    op_next,
+    input wire [7:0]    testing_data,
+    //Outputs
+    output wire         m1t1
     );
 
     reg [7:0] op;
 
     wire [1:0] src_sel;
-    decode d1(.clk(clk), .rst(rst), .curr_op(op), .reg_rd_en(r1.rd_en), .reg_wr_en(r1.wr_en), .reg_rd_addr(r1.rd_sel), .reg_wr_addr(r1.wr_sel), .reg_src_sel(src_sel));
     reg [7:0] reg_data_in;
     wire [7:0] reg_data_out;
+
+    decode d1(.clk(clk), .rst(rst), .curr_op(op), .reg_rd_en(r1.rd_en), .reg_wr_en(r1.wr_en), .reg_rd_addr(r1.rd_sel), .reg_wr_addr(r1.wr_sel), .reg_src_sel(src_sel), .m1t1(m1t1));
     register_file_new r1(.clk(clk), .rst(rst), .wr_sel(d1.reg_wr_addr), .rd_sel(d1.reg_rd_addr), .wr_en(d1.reg_wr_en), .rd_en(d1.reg_rd_en), .data_in(reg_data_in), .data_out(reg_data_out));
 
     always @(posedge clk or negedge rst) begin
         if(~rst) begin
             op <= 8'b0;
         end
-        else begin
-            op <= op_next;
-        end
+    end
+
+    always @(posedge m1t1) begin
+        op <= op_next; //Eventually will become memory buffer
     end
 
     always @(*) begin

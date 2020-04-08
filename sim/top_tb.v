@@ -54,10 +54,11 @@ module tb;
         end
 	end
 
-    always @(posedge clk) begin
+    always @(posedge dut.m1t1) begin
         $display("Vector number: %d", vectornum);
         $display("  Vector: %b", testvectors[vectornum]);
-        #1; {op, res_expected} = testvectors[vectornum];
+		#1; {op, res_expected} = testvectors[vectornum];
+        vectornum = vectornum + 1;
     end
 
     always @(negedge clk) begin
@@ -67,7 +68,6 @@ module tb;
             $display("  outputs: %b (%b exp)", res, res_expected); //%h for hex
             errors = errors + 1;
         end
-        vectornum = vectornum + 1;
         if (testvectors[vectornum] === 64'bx) begin
             $display("%d tests completed with %d errors", vectornum, errors);
             $finish;
