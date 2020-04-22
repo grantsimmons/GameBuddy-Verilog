@@ -1,23 +1,19 @@
-module register(
+module register #(parameter DATA_WIDTH = 8) (
     input wire clk,
 	input wire rst,
     input wire wr_en,
-    input wire [7:0] data_in,
-    output wire [7:0] data_out
+    input wire [DATA_WIDTH - 1:0] data_in,
+    output reg [DATA_WIDTH - 1:0] data_out
     );
-
-    reg [7:0] data;
-    
-    assign data_out = data;
 
     always @(posedge clk or negedge rst) begin
 		if(~rst) begin
-			data <= 0;
+			data_out = 8'b0;
 		end
-		if(wr_en) begin
-            data <= data_in;
+		else begin
+			if(wr_en) begin
+				data_out <= data_in;
+			end
 		end
     end
-
-
 endmodule

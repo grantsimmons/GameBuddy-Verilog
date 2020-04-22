@@ -1,10 +1,18 @@
 module alu(
+	input wire [1:0]	t_cycle,
     input wire [2:0]    op,   //ALU Operation
-    input wire [4:0]    src_data,
-    input wire [4:0]    dest_data,
+	input wire			alu_begin,
+    input wire [2:0]    src_addr,  //Source register (Needed?)
+    input wire [2:0]    dest_addr, //Destination Register
+    input wire [7:0]    src_data,
+    input wire [7:0]    dest_data,
+	input wire [7:0]	flags_in,
+    //input wire          size, //0 = 8-bit; 1 = 16-bit
     input wire          ext,  //CB Extension instructions
     input wire          misc, //Non-arithmetic/logic instructions
-    output reg [15:0]   res  //7:0 for 8-bit instructions
+    output reg [7:0]    res,  //7:0 for 8-bit instructions
+    output reg [7:0]    flags_res, //Flag results > Flag register
+	output reg			wr_en_flags
     );
 
     //Base instructions
@@ -40,12 +48,23 @@ module alu(
     localparam SET  = 2'b11;
 
     //Flag Register Masks
-    localparam F_ZERO  = 4'b1000;
-    localparam F_SUB   = 4'b0100;
-    localparam F_HALF  = 4'b0010;
-    localparam F_CARRY = 4'b0001;
+    //localparam F_ZERO  = 4'b1000;
+    //localparam F_SUB   = 4'b0100;
+    //localparam F_HALF  = 4'b0010;
+    //localparam F_CARRY = 4'b0001;
 
-    always @(*) begin
+    localparam F_CARRY = 4;
+    localparam F_HALF  = 5;
+    localparam F_SUB   = 6;
+    localparam F_ZERO  = 7;
+
+	always @(t_cycle) begin
+		if(t_cycle == 2'b0)
+			wr_en_flags = 1'b0;
+	end
+
+    always @(posedge alu_begin) begin
+		flags_res <= flags_in;
         if(ext) begin //EXT instructions
             if(misc) begin //EXT+MISC instructions
                 //op   = instruction[7:6]
@@ -67,34 +86,27 @@ module alu(
                 //dest = instruction[2:0]
                 case(op)
                     RLC: begin
-                        res = {dest_data << src_data, dest_data[4]};
                     end
 
                     RRC: begin
-                        res = {dest_data[0], (dest_data >> src_data)};
                     end
 
                     RL: begin
-                        res = {(dest_data << src_data), dest_data[4]};
                     end
 
                     RR: begin
-                        res = {dest_data[0], (dest_data >> src_data)};
                     end
 
                     SLA: begin
-                        res = {(dest_data << src_data), 1'b1};
                     end
 
                     SRA: begin
-                        res = {dest_data[4], (dest_data >> src_data)};
                     end
 
                     SWAP: begin
                     end
 
                     SRL: begin
-                        res = {1'b0, (dest_data >> src_data)};
                     end
                 endcase
             end
@@ -122,19 +134,16 @@ module alu(
                 //dest = 3'b111 (A register)
                 case(op)
                     ADD: begin
-                        res = src_data + dest_data;
+                        {flags_res[F_CARRY], res} = src_data + dest_data;
                     end
 
                     ADC: begin
-                        res = src_data + dest_data;
                     end
 
                     SUB: begin
-                        res = src_data - dest_data;
                     end
 
                     SBC: begin
-                        res = src_data - dest_data;
                     end
 
                     AND: begin
@@ -154,5 +163,6 @@ module alu(
                 endcase
             end
         end
+		wr_en_flags = 1'b1;
     end
 endmodule 

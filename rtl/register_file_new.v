@@ -1,14 +1,22 @@
 module register_file_new(
     //Inputs
     input wire          clk,
+    input wire          m1t1,
+    input wire          writeback,
     input wire          rst,
     input wire [2:0]    wr_sel,
     input wire [2:0]    rd_sel,
     input wire          wr_en,
+    input wire          wr_en_flags,
     input wire          rd_en,
     input wire [7:0]    data_in,
+    input wire [7:0]    alu_flags_in,
     //Outputs
-    output reg [7:0]    data_out
+    output reg [7:0]    data_out,
+    output wire [7:0]   flags_out,
+    //output reg [7:0]    data_out_8,
+    //output reg [15:0]    data_out_16,
+    output wire [15:0]  addr_bus
     );
     
     localparam REG_A = 3'b111;
@@ -18,7 +26,7 @@ module register_file_new(
     localparam REG_E = 3'b011;
     localparam REG_H = 3'b100;
     localparam REG_L = 3'b101;
-    //110 = data bus
+    //110 = data bus //Double as F?
 
     reg [7:0]  demux_data_a,
                demux_data_b,
@@ -44,13 +52,36 @@ module register_file_new(
                demux_wr_en_h,
                demux_wr_en_l;
 
-    register a(.clk(clk), .rst(rst), .wr_en(demux_wr_en_a), .data_in(demux_data_a), .data_out(rdmux_data_out_a));
-    register b(.clk(clk), .rst(rst), .wr_en(demux_wr_en_b), .data_in(demux_data_b), .data_out(rdmux_data_out_b));
-    register c(.clk(clk), .rst(rst), .wr_en(demux_wr_en_c), .data_in(demux_data_c), .data_out(rdmux_data_out_c));
-    register d(.clk(clk), .rst(rst), .wr_en(demux_wr_en_d), .data_in(demux_data_d), .data_out(rdmux_data_out_d));
-    register e(.clk(clk), .rst(rst), .wr_en(demux_wr_en_e), .data_in(demux_data_e), .data_out(rdmux_data_out_e));
-    register h(.clk(clk), .rst(rst), .wr_en(demux_wr_en_h), .data_in(demux_data_h), .data_out(rdmux_data_out_h));
-    register l(.clk(clk), .rst(rst), .wr_en(demux_wr_en_l), .data_in(demux_data_l), .data_out(rdmux_data_out_l));
+    register #(8) a(.clk(writeback), .rst(rst), .wr_en(demux_wr_en_a), .data_in(demux_data_a), .data_out(rdmux_data_out_a));
+    register #(8) b(.clk(writeback), .rst(rst), .wr_en(demux_wr_en_b), .data_in(demux_data_b), .data_out(rdmux_data_out_b));
+    register #(8) c(.clk(writeback), .rst(rst), .wr_en(demux_wr_en_c), .data_in(demux_data_c), .data_out(rdmux_data_out_c));
+    register #(8) d(.clk(writeback), .rst(rst), .wr_en(demux_wr_en_d), .data_in(demux_data_d), .data_out(rdmux_data_out_d));
+    register #(8) e(.clk(writeback), .rst(rst), .wr_en(demux_wr_en_e), .data_in(demux_data_e), .data_out(rdmux_data_out_e));
+    register #(8) h(.clk(writeback), .rst(rst), .wr_en(demux_wr_en_h), .data_in(demux_data_h), .data_out(rdmux_data_out_h));
+    register #(8) l(.clk(writeback), .rst(rst), .wr_en(demux_wr_en_l), .data_in(demux_data_l), .data_out(rdmux_data_out_l));
+
+    register #(8) f(.clk(writeback), .rst(rst), .wr_en(wr_en_flags), .data_in(alu_flags_in), .data_out(flags_out)); //FIXME: Need arbitrary write for POPAF and SCF/CCF
+    //register #(8) temp_lsb(.clk(writeback), .rst(rst), .wr_en(), .data_in(), .data_out());
+    //register #(8) temp_msb(.clk(writeback), .rst(rst), .wr_en(), .data_in(), .data_out());
+
+    reg pc_wr_en;
+    reg [15:0] pc_data_in;
+    //wire [15:0] test;
+    register #(16) pc(.clk(m1t1), .rst(rst), .data_in(pc_data_in), .wr_en(pc_wr_en));
+    assign addr_bus = pc.data_out;
+    //register #(16) sp(.clk(clk), .rst(rst), .data_out(addr_bus));
+
+    //PC Auto-increment for testing
+    always @(posedge m1t1 or negedge rst) begin
+        if(~rst) begin
+            pc_data_in = 0;
+            pc_wr_en = 0;
+        end
+        else begin
+            pc_data_in <= pc_data_in + 1;
+            pc_wr_en <= 1'b1;
+        end
+    end
 
     always @(*) begin
         //DEMUX
@@ -214,7 +245,7 @@ module register_file_new(
                 end
             endcase
         end else begin
-            data_out = 7'bz;
+            data_out = 8'bx; //Not Synthesizable?
         end
     end
 endmodule
