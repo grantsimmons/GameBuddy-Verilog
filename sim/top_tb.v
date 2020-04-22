@@ -6,6 +6,7 @@ module tb;
     localparam DATA_SIZE = 8;
     localparam OP_SIZE = 8;
     localparam RES_SIZE = 8 * 7;
+
     reg [OP_SIZE - 1:0] op;
     reg [DATA_SIZE - 1:0] src_data;
     reg [DATA_SIZE - 1:0] dest_data;
@@ -16,26 +17,28 @@ module tb;
 
     reg [31:0] vectornum, errors; //Bookkeeping
 
-    reg [ OP_SIZE + RES_SIZE - 1:0] testvectors[6:0]; //Test vector array
+    reg [OP_SIZE + RES_SIZE - 1:0] testvectors[6:0]; //Test vector array
+	reg [OP_SIZE:0] mem[6:0];
 
-	top dut(.clk(clk), .rst(rst), .testing_data(dest_data), .op_next(op));
+	wire [15:0] addr_bus; //Simulated Memory control
+	wire [7:0] d_bus; //Eventually wire for inout
+	wire rd;
 
-	assign res =   {dut.r1.a.data,
-					dut.r1.b.data,
-					dut.r1.c.data,
-					dut.r1.d.data,
-					dut.r1.e.data,
-					dut.r1.h.data,
-					dut.r1.l.data};
+	//top dut(.clk(clk), .rst(rst), .testing_data(dest_data), .op_next(op), .rd(rd), .d_bus(d_bus), .addr_bus(addr_bus));
+	top dut(.clk(clk), .rst(rst), .testing_data(dest_data), .data_out(d_bus), .rd(rd), .addr_bus(addr_bus));
 
-    integer i;
-    integer j;
-    integer k;
+	assign res =   {dut.r1.a.data_out,
+					dut.r1.b.data_out,
+					dut.r1.c.data_out,
+					dut.r1.d.data_out,
+					dut.r1.e.data_out,
+					dut.r1.h.data_out,
+					dut.r1.l.data_out};
 
+    integer i = 0;
     initial begin //Setup
         $readmemb("sim/testing_top.tv", testvectors); //readmemh reads hex
-        j = 0;
-        k = 0;
+		$readmemb("sim/mem.tv", dut.mem.mem);
         clk = 0;
         op = 0;
         src_data = 0;
@@ -45,6 +48,7 @@ module tb;
         vectornum = 0;
         errors = 0;
 		rst = 0; #2; rst = 1;
+        dut.r1.b.data_out = 8;
         dest_data = 1;
     end
 
@@ -54,11 +58,25 @@ module tb;
         end
 	end
 
+    reg running;
     always @(posedge dut.m1t1) begin
+        if(d_bus !== 8'bx) begin
+            running <= 1'b1;
+        end
         $display("Vector number: %d", vectornum);
         $display("  Vector: %b", testvectors[vectornum]);
-		#1; {op, res_expected} = testvectors[vectornum];
-        vectornum = vectornum + 1;
+		//#1; {op, res_expected} = testvectors[vectornum];
+        //vectornum = vectornum + 1;
+        if(running && d_bus === 8'bx) begin
+            $finish;
+        end
+		//d_bus <= d_bus_buf;
+		//if(rd) begin
+		//	if(mem[addr_bus] === 8'bx) begin
+		//		$finish;
+		//	end
+		//	d_bus_buf = mem[addr_bus];
+		//end
     end
 
     always @(negedge clk) begin
