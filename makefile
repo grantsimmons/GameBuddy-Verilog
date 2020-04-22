@@ -11,7 +11,7 @@ SCRIPTS_DIR = scripts
 CC = iverilog
 ASM = vvp
 RUNNAME = run
-RUNFILES = rtl/decode.v rtl/register_file_new.v rtl/register.v rtl/top.v
+RUNFILES = rtl/memory.v rtl/decode.v rtl/register_file_new.v rtl/register.v rtl/alu.v rtl/top.v
 #RUNFILES = fpga/7SD_Testing.srcs/sources_1/new/alu.v
 #TESTBENCH = $(SIM_DIR)/tb_revised.v
 TESTBENCH = $(SIM_DIR)/top_tb.v
@@ -22,7 +22,7 @@ TESTBENCHOUT = $(DATA_DIR)/dumpfile.vcd
 WAVEVIEWER = gtkwave
 VFLAGS = -O $(LOGS_DIR)/$@.log -o
 #WAVEFORM SAVE FILE
-VIEW = $(DATA_DIR)/test.gtkw
+VIEW = $(DATA_DIR)/base.gtkw
 
 #SYNTHESIS (YOSYS) PARAMS
 SYNTHESIS = yosys
@@ -54,8 +54,8 @@ $(RUNNAME)_notb: $(RUNFILES)
 	$(ASM) $(RUNNAME) > $(RPTS_DIR)/$(RUNNAME)_notb.rpt
 
 wave: $(TESTBENCHOUT)
-	$(WAVEVIEWER) $(TESTBENCHOUT) $(VFLAGS) &
-	#$(WAVEVIEWER) $(TESTBENCHOUT) $(VFLAGS) $(VIEW) &
+	#$(WAVEVIEWER) $(TESTBENCHOUT) $(VFLAGS) &
+	$(WAVEVIEWER) $(TESTBENCHOUT) $(VFLAGS) $(VIEW) &
 
 synth: $(RUNFILES)
 	$(SYNTHESIS) $(RUNFILES) $(SYNTHSCRIPT) $(SYNTHOUT) $(SYNTHFLAGS) $(SYNTHLOG)
