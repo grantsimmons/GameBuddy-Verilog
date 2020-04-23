@@ -76,8 +76,6 @@ module top(
     alu                 a1( .t_cycle(t_cycle),
                             .op(d1.alu_op),
                             .alu_begin(d1.alu_begin),
-                            .src_addr(d1.alu_src_addr),
-                            .dest_addr(d1.alu_dest_addr),
                             .src_data(r1.data_out),
                             .dest_data(r1.a.data_out),
                             .flags_in(r1.flags_out),
