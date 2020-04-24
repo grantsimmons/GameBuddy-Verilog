@@ -158,7 +158,7 @@ module decode(
 
                     3'b111: begin //Accumulator Rotates, Misc. ALU operations
                         m_count = 2'd1;
-                        begin_alu(instruction[5:3], instruction[2:0], instruction[5], 1'b0);
+                        begin_alu(instruction[5:3], instruction[2:0], 1'b1, 1'b0);
                             //misc = instruction[5]; //Misc ALU instructions
                             //reg_rd_addr = instruction[2:0]; //Doesn't matter in this scenario. Will matter for extension rotates
                             //reg_rd_en = 1'b1; //Not for SCF/CCF
