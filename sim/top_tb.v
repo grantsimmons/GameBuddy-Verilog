@@ -4,21 +4,22 @@ module tb;
 	reg rst;
 
     localparam DATA_SIZE = 8;
+    localparam ADDR_SIZE = 16;
+    localparam MEM_DEPTH = 1 << ADDR_SIZE;
     localparam OP_SIZE = 8;
-    localparam RES_SIZE = 8 * 7;
+    localparam RES_SIZE = 8 * 8;
 
-    reg [OP_SIZE - 1:0] op;
+    reg [OP_SIZE - 1:0] vector_op, vector_op_next;
     reg [DATA_SIZE - 1:0] src_data;
     reg [DATA_SIZE - 1:0] dest_data;
     reg ext;
     reg misc;
     wire [RES_SIZE - 1:0] res; //Circuit output
-    reg [RES_SIZE - 1:0] res_expected; //Expected output
+    reg [RES_SIZE - 1:0] vector_res_expected, vector_res_expected_next; //Expected output
 
-    reg [31:0] vectornum, errors; //Bookkeeping
+    reg [31:0] vectornum, vectornum_last, errors; //Bookkeeping
 
-    reg [OP_SIZE + RES_SIZE - 1:0] testvectors[6:0]; //Test vector array
-	reg [OP_SIZE:0] mem[6:0];
+    reg [OP_SIZE + RES_SIZE - 1:0] testvectors[0:MEM_DEPTH - 1]; //Test vector array
 
 	wire [15:0] addr_bus; //Simulated Memory control
 	wire [7:0] d_bus; //Eventually wire for inout
@@ -33,22 +34,27 @@ module tb;
 					dut.r1.d.data_out,
 					dut.r1.e.data_out,
 					dut.r1.h.data_out,
-					dut.r1.l.data_out};
+					dut.r1.l.data_out,
+                    dut.r1.f.data_out};
 
     integer i = 0;
+    integer j = 0;
     initial begin //Setup
-        $readmemb("sim/testing_top.tv", testvectors); //readmemh reads hex
-		$readmemb("sim/mem.tv", dut.mem.mem);
+        $readmemb("sim/stim.tv", testvectors); //readmemh reads hex
+        for(j = 0; j < $size(testvectors); j = j + 1) begin //Assign OPs from testvectors to memory
+            dut.mem.mem[j] = testvectors[j][OP_SIZE + RES_SIZE - 1-:OP_SIZE];
+        end
         clk = 0;
-        op = 0;
+        vector_op = 0;
         src_data = 0;
         dest_data = 0;
         ext = 0;
         misc = 0;
         vectornum = 0;
+        vectornum_last = 0;
+        vector_op_next = 0;
         errors = 0;
 		rst = 0; #2; rst = 1;
-        dut.r1.b.data_out = 8;
         dest_data = 1;
     end
 
@@ -58,37 +64,51 @@ module tb;
         end
 	end
 
-    reg running;
+    reg running; //Indicates that testbench should continue
+
     always @(posedge dut.m1t1) begin
         if(d_bus !== 8'bx) begin
             running <= 1'b1;
         end
-        $display("Vector number: %d", vectornum);
-        $display("  Vector: %b", testvectors[vectornum]);
-		//#1; {op, res_expected} = testvectors[vectornum];
-        //vectornum = vectornum + 1;
+        if(~dut.d1.hold) begin
+            #1; {vector_op_next, vector_res_expected_next} <= testvectors[vectornum];
+            vectornum_last <= vectornum; //Because of pipeline, Last op is tested, so we use vectornum_last
+            vectornum = vectornum + 1;
+            {vector_op, vector_res_expected} = {vector_op_next, vector_res_expected_next};
+        end
         if(running && d_bus === 8'bx) begin
+            $display("%d tests completed with %d errors", vectornum_last, errors);
             $finish;
         end
-		//d_bus <= d_bus_buf;
-		//if(rd) begin
-		//	if(mem[addr_bus] === 8'bx) begin
-		//		$finish;
-		//	end
-		//	d_bus_buf = mem[addr_bus];
-		//end
     end
 
+    
+    reg [7:0] char_arr [0:7];
+    initial begin
+        char_arr[7] = "A";
+        char_arr[6] = "B";
+        char_arr[5] = "C";
+        char_arr[4] = "D";
+        char_arr[3] = "E";
+        char_arr[2] = "H";
+        char_arr[1] = "L";
+        char_arr[0] = "F";
+    end
+    integer k = 7;
+
     always @(negedge clk) begin
-        $display("op=%b, res=%d, res(binary)=%b res_expected=%b", op, res, res, res_expected);
-        if (res !== res_expected) begin
-            $display("Error: inputs: %b", {op, ext, misc, src_data, dest_data});
-            $display("  outputs: %b (%b exp)", res, res_expected); //%h for hex
-            errors = errors + 1;
-        end
-        if (testvectors[vectornum] === 64'bx) begin
-            $display("%d tests completed with %d errors", vectornum, errors);
-            $finish;
+        if(dut.d1.t_cycle == 2'b11 && vector_res_expected !== 64'bx) begin
+            $display("\nVector number: %d", vectornum_last);
+            $display(" Vector: %b", {vector_op, vector_res_expected});
+            $display("Vector Op Code: %b (%h)\n  Result: %b\nExpected: %b", vector_op, vector_op, res, vector_res_expected);
+            if (res !== vector_res_expected) begin
+                $display("Error:\nInstruction: %h\nExt: %b, Misc: %b\n\nRegister:   Value:    Expected:", dut.d1.instruction, ext, misc);
+                for(k = 8; k > 0; k = k - 1) begin
+                    $display("%c:          %b  %b", char_arr[k - 1], res[(k * DATA_SIZE)-1-:DATA_SIZE], vector_res_expected[(k * DATA_SIZE)-1-:DATA_SIZE]); //%h for hex
+                end
+                $display("");
+                errors = errors + 1;
+            end
         end
     end
 
