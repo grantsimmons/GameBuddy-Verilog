@@ -1,0 +1,88 @@
+[*]
+[*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
+[*] Thu Apr 23 01:52:34 2020
+[*]
+[dumpfile] "/mnt/c/Git/GameBuddy-Verilog/data/dumpfile.vcd"
+[dumpfile_mtime] "Thu Apr 23 01:18:13 2020"
+[dumpfile_size] 30793
+[optimize_vcd]
+[savefile] "/mnt/c/Git/GameBuddy-Verilog/data/registers_and_alu.gtkw"
+[timestart] 257
+[size] 1366 745
+[pos] -1 -1
+*-7.000000 415 1555 1595 1515 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[treeopen] tb.
+[treeopen] tb.dut.
+[treeopen] tb.dut.r1.
+[sst_width] 191
+[signals_width] 258
+[sst_expanded] 1
+[sst_vpaned_height] 208
+@28
+tb.dut.m1t1
+tb.clk
+tb.rst
+tb.dut.d1.hold
+@22
+tb.dut.m_cycle[3:0]
+@28
+tb.dut.t_cycle[1:0]
+@200
+-
+@2028
+^1 /mnt/c/Git/GameBuddy-Verilog/alias/ops.alias
+tb.dut.d1.instruction[7:0]
+@28
+tb.dut.a1.alu_begin
+tb.dut.r1.writeback
+@2028
+^2 /mnt/c/Git/GameBuddy-Verilog/alias/alu_ops.alias
+tb.dut.a1.op[2:0]
+@22
+tb.dut.a1.src_data[7:0]
+@28
+tb.dut.a1.misc
+@22
+tb.dut.a1.dest_data[7:0]
+@200
+-
+@28
+tb.dut.r1.a.wr_en
+@22
+tb.dut.r1.a.data_out[7:0]
+@28
+tb.dut.r1.b.wr_en
+@22
+tb.dut.r1.b.data_out[7:0]
+@28
+tb.dut.r1.c.wr_en
+@22
+tb.dut.r1.c.data_out[7:0]
+@28
+tb.dut.r1.d.wr_en
+@22
+tb.dut.r1.d.data_out[7:0]
+@28
+tb.dut.r1.e.wr_en
+@22
+tb.dut.r1.e.data_out[7:0]
+@28
+tb.dut.r1.h.wr_en
+@22
+tb.dut.r1.h.data_out[7:0]
+@28
+tb.dut.r1.l.wr_en
+@22
+tb.dut.r1.l.data_out[7:0]
+@28
+tb.dut.r1.f.wr_en
+@22
+tb.dut.a1.flags_res[7:0]
+tb.dut.r1.f.data_out[7:0]
+tb.dut.a1.res[7:0]
+@200
+-
+@29
+tb.dut.r1.rd_en
+[pattern_trace] 1
+[pattern_trace] 0
