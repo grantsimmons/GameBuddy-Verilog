@@ -44,10 +44,13 @@ module alu(
     localparam CCF  = 3'b111; //Complement Carry Flag
 
     //EXT+MISC Instructions
-    localparam XXX  = 2'b00; //Unused
-    localparam BIT  = 2'b01;
-    localparam RES  = 2'b10;
-    localparam SET  = 2'b11;
+    localparam XXX  = 3'b000; //Unused
+    localparam BIT  = 3'b001;
+    localparam RES  = 3'b010;
+    localparam SET  = 3'b011;
+
+	localparam INC  = 3'b100;
+	localparam DEC  = 3'b101;
 
     //Flag Register Masks
     //localparam F_ZERO  = 4'b1000;
@@ -84,6 +87,21 @@ module alu(
 					end
 
 					SET: begin
+					end
+
+					INC: begin
+						res = src_data + 1'b1;
+						flags_res[F_ZERO] = res == 8'b0 ? 1'b1 : 1'b0; //FIXME: UMM, why does this work?
+						flags_res[F_HALF] = (src_data[3:0] + 1'b1) & 5'h10 ? 1'b1 : 1'b0; //FIXME: Ditto
+						flags_res[F_SUB] = 1'b0;
+					end
+
+					DEC: begin
+						res = src_data - 1'b1;
+						//flags_res[F_ZERO] = (src_data - 1'b1) & 8'hFF == 8'b0 ? 1'b1 : 1'b0;
+						flags_res[F_ZERO] = res == 8'b0 ? 1'b1 : 1'b0;
+						flags_res[F_HALF] = (src_data[4:0] - 1'b1) == 4'hF ? 1'b1 : 1'b0; //FIXME: Ditto
+						flags_res[F_SUB] = 1'b1;
 					end
 				endcase
 			end else begin //EXT Arithmetic instructions

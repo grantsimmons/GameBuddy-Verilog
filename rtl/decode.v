@@ -130,6 +130,7 @@ module decode(
         reg_wr_en = 1'b0;
         reg_rd_en = 1'b0;
         misc = 1'b0;
+        ext = 1'b0;
 
         case(prefix)
             2'b00: begin
@@ -148,9 +149,22 @@ module decode(
                     end
 
                     3'b100: begin //8-bit Increment
+                        //TODO: Pull INC/DEC out of ALU
+                        if(instruction[5:3] != 3'b110) begin
+                            m_count = 2'd1;
+                            ext = 1'b1;
+                            begin_alu(instruction[2:0], instruction[5:3], 1'b1, 1'b1);
+                            write(instruction[5:3]);
+                        end
                     end
 
                     3'b101: begin //8-bit Decrement
+                        if(instruction[5:3] != 3'b110) begin
+                            m_count = 2'd1; //FIXME: Same format as INC. Condense?
+                            ext = 1'b1;
+                            begin_alu(instruction[2:0], instruction[5:3], 1'b1, 1'b1);
+                            write(instruction[5:3]);
+                        end
                     end
 
                     3'b110: begin //8-bit Immediate Load
