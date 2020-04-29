@@ -4,8 +4,9 @@ module register_file_new(
     input wire          m1t1,
     input wire          writeback,
     input wire          rst,
-    input wire [2:0]    wr_sel,
-    input wire [2:0]    rd_sel,
+    input wire [2:0]    wr_sel, //Internal 3-bit register address
+    input wire [2:0]    rd_sel, //Internal 3-bit register address
+    input wire          drive_addr, //Drive address bus this cycle
     input wire          wr_en,
     input wire          wr_en_flags,
     input wire          rd_en,
@@ -16,7 +17,7 @@ module register_file_new(
     output wire [7:0]   flags_out,
     //output reg [7:0]    data_out_8,
     //output reg [15:0]    data_out_16,
-    output wire [15:0]  addr_bus
+    output reg [15:0]  addr_bus
     );
     
     localparam REG_A = 3'b111;
@@ -68,7 +69,7 @@ module register_file_new(
     reg [15:0] pc_data_in;
     //wire [15:0] test;
     register #(16) pc(.clk(m1t1), .rst(rst), .data_in(pc_data_in), .wr_en(pc_wr_en));
-    assign addr_bus = pc.data_out;
+    //assign addr_bus = pc.data_out;
     //register #(16) sp(.clk(clk), .rst(rst), .data_out(addr_bus));
 
     //PC Auto-increment for testing
@@ -84,6 +85,24 @@ module register_file_new(
     end
 
     always @(*) begin
+        if(drive_addr) begin
+            case(rd_sel)
+                3'b000: addr_bus = pc.data_out;
+                //3'b001: addr_bus = {temp_msb.data_out, temp_lsb.data_out};
+                3'b100: addr_bus = {b.data_out, c.data_out};
+                3'b101: addr_bus = {d.data_out, e.data_out};
+                3'b110: addr_bus = {h.data_out, l.data_out};
+                //3'b111: addr_bus = sp.data_out;
+                default: addr_bus = 8'bx;
+            endcase
+        end
+        else begin
+            addr_bus = pc.data_out;
+        end
+
+
+
+
         //DEMUX
         case(wr_sel)
             REG_A: begin

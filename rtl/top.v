@@ -64,6 +64,7 @@ module top(
                             .rst(rst), 
                             .wr_sel(d1.reg_wr_addr), 
                             .rd_sel(d1.reg_rd_addr), 
+                            .drive_addr(d1.reg_drive_addr),
                             .wr_en(d1.reg_wr_en), 
                             .wr_en_flags(a1.wr_en_flags),
                             .rd_en(d1.reg_rd_en), 
@@ -99,8 +100,13 @@ module top(
     end
 
     //CPU Data Buffer
-    always @(posedge clk) begin
-        int_data_in <= mem_data_out;
+    //always @(posedge clk) begin
+    always @(t_cycle) begin
+        if(t_cycle == 2'b00) begin
+            //CPU samples external data bus on T1
+            int_data_in <= mem_data_out;
+        end
+        //TODO: Find out when this actually happens
         mem_data_in <= int_data_out;
     end
 

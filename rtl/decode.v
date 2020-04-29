@@ -9,8 +9,9 @@ module decode(
     output reg          reg_wr_en,
     output reg [2:0]    reg_rd_addr,
     output reg [2:0]    reg_wr_addr,
+    output reg          reg_drive_addr,
     output reg [1:0]    reg_src_sel, //Controls register file data source mux
-    output wire          reg_writeback,
+    output wire         reg_writeback,
         //SBUS = 2'b00;
         //ALU = 2'b01;
         //MEM = 2'b10;
@@ -45,8 +46,10 @@ module decode(
     assign reg_writeback = t_cycle == 2'b11 ? 1'b1 : 1'b0; //Register writeback clock (T3)
 
     //FETCH
-    always @(posedge m1t1) begin
-        instruction <= data_bus_in; //Fetch next instruction from memory buffer
+    always @(m1t1 or data_bus_in) begin
+        if(m1t1) begin
+            instruction <= data_bus_in; //Fetch next instruction from memory buffer
+        end
     end
 
     reg [4:0] m_count; //The number of M-Cycles in current instruction
@@ -85,8 +88,11 @@ module decode(
                 end
             end
             2'b10: begin //T-Cycle 3
-                if(next_cycle[4:2] == 3'b000) begin
-                    //Put next instruction on memory buffer line if next m-cycle is a M1 Cycle
+                //if(next_cycle[4:2] == 3'b000) begin
+                //    //Put next instruction on memory buffer line if next m-cycle is a M1 Cycle
+                //    rd = 1'b1;
+                //end
+                if(m_count - 1'b1 == m_cycle) begin
                     rd = 1'b1;
                 end
             end
@@ -121,14 +127,15 @@ module decode(
     //DECODE
     always @(*) begin
         if(next_cycle_high[4:2] == m_count) begin
-            next_cycle <= next_cycle_high & 2'b11;
+            next_cycle <= next_cycle_high & 2'b11; //Go to next instruction if next M-Cycle = number of M-Cycles for current instruction
         end else begin
-            next_cycle <= next_cycle_high;
+            next_cycle <= next_cycle_high; //Go to next T-Cycle
         end
 
         //Set Default Control Values
         reg_wr_en = 1'b0;
         reg_rd_en = 1'b0;
+        reg_drive_addr = 1'b0; //Drive PC by default
         misc = 1'b0;
         ext = 1'b0;
 
@@ -154,7 +161,7 @@ module decode(
                             m_count = 2'd1;
                             ext = 1'b1;
                             begin_alu(instruction[2:0], instruction[5:3], 1'b1, 1'b1);
-                            write(instruction[5:3]);
+                            write(instruction[5:3], ALU);
                         end
                     end
 
@@ -163,7 +170,7 @@ module decode(
                             m_count = 2'd1; //FIXME: Same format as INC. Condense?
                             ext = 1'b1;
                             begin_alu(instruction[2:0], instruction[5:3], 1'b1, 1'b1);
-                            write(instruction[5:3]);
+                            write(instruction[5:3], ALU);
                         end
                     end
 
@@ -178,7 +185,7 @@ module decode(
                             //reg_rd_en = 1'b1; //Not for SCF/CCF
 
                         if(instruction[5:4] != 2'b11) begin
-                            write(3'b111); //Rotates, NOT, and DAA writeback to A
+                            write(3'b111, ALU); //Rotates, NOT, and DAA writeback to A
                         end
                     end
                 endcase
@@ -190,16 +197,18 @@ module decode(
                     //Load to reg
                     m_count = 1'd1;
                     reg_rd_addr = instruction[2:0]; //Source
-                    reg_src_sel = SBUS;
+                    //reg_src_sel = SBUS;
                     reg_rd_en = 1'b1;
-                    write(instruction[5:3]);
+                    write(instruction[5:3], SBUS);
                 end
                 else if(instruction[5:3] == 3'b110) begin
                     //Load to memory
                     m_count = 2'd2;
                     //M-Cycle 1:
-                    reg_rd_addr = instruction[2:0]; //Source
-                    reg_rd_en = 1'b1;
+                    //reg_rd_addr = instruction[2:0]; //Source
+                    //reg_rd_en = 1'b1;
+                    
+
                     //Place value on d_bus
                     //Place HL on addr
                     //mem_WE = 1'b1;
@@ -207,14 +216,20 @@ module decode(
                     //Write d_bus to mem
                     
                 end
-                else if(instruction[2:0] == 3'b110) begin //instruction[5:3] == 3'b110
+                else if(instruction[2:0] == 3'b110) begin
                     //Load to memory bus (HL)
                     m_count = 2'd2;
                     //M-Cycle 1:
-                    
-                    //M-Cycle 2:
-                    //reg_wr_addr = instruction[5:3];
-                    write(instruction[5:3]);
+
+                    case(m_cycle)
+                        2'b00: begin
+                            read_mem(instruction[2:0]);
+                        end
+                        2'b01: begin
+                            //reg_src_sel = MEM;
+                            write(instruction[5:3], MEM);
+                        end
+                    endcase
                 end
                 else begin
                     //Halt
@@ -227,21 +242,23 @@ module decode(
                 //op[2:0] = reg select
                 m_count = 2'd1;
                 begin_alu(instruction[5:3], instruction[2:0], 1'b0, 1'b1);
-                write(3'b111);
+                write(3'b111, ALU);
 
             end
 
             2'b11: begin
                 //Memory Operations
                 //Flow Control
-                write(instruction[5:3]);
-                reg_src_sel = DEBUG;
+                write(instruction[5:3], DEBUG);
+                //reg_src_sel = DEBUG;
             end
         endcase
     end
 
     task write; //Enables Register Write-back, synced to register file writeback clock
-        input [2:0] task_wr_addr;
+        input [2:0] task_wr_addr; //Register address
+        input [1:0] task_src_sel; //Register input select
+        reg_src_sel = task_src_sel;
         reg_wr_addr = task_wr_addr;
         reg_wr_en = t_cycle > 2'b01 ? 1'b1 : 1'b0;
     endtask
@@ -256,7 +273,32 @@ module decode(
         reg_rd_addr = task_rd_addr; //Only really necessary for the Rotates
         reg_rd_en = task_rd_en;
 
-        reg_src_sel = ALU;
+        //reg_src_sel = ALU;
         alu_begin = t_cycle > 2'b01 ? 1'b1 : 1'b0; //Generates ALU begin signal
+    endtask
+
+    task read_mem;
+        //Read From
+        input [3:0] task_rd_addr;
+        reg_drive_addr = 1'b1;
+        reg_rd_addr = task_rd_addr;
+        //PC = 000
+        //TP = 001
+        //
+        //BC = 100
+        //DE = 101
+        //HL = 110
+        //SP = 111
+        if(t_cycle == 2'b10) begin
+            rd = 1'b1;
+        end
+
+        //Send reg16 address to reg file to put on read bus -> address bus
+    endtask
+
+    task write_mem;
+        input [3:0] task_wr_addr;
+        input [7:0] task_data;
+
     endtask
 endmodule
