@@ -39,11 +39,13 @@ module tb;
 
     integer i = 0;
     integer j = 0;
+    integer l = 0;
+    integer r, file, start, count;
     initial begin //Setup
-        $readmemb("sim/stim.tv", testvectors); //readmemh reads hex
-        for(j = 0; j < $size(testvectors); j = j + 1) begin //Assign OPs from testvectors to memory
-            dut.mem.mem[j] = testvectors[j][OP_SIZE + RES_SIZE - 1-:OP_SIZE];
-        end
+        $readmemb("sim/stim.tv", testvectors); //Load test vectors
+        for(l = 0; l < $size(dut.mem.mem); l = l + 1)
+            dut.mem.mem[l] = 8'b0;
+        $readmemb("scripts/stim.txt", dut.mem.mem); //Load program
         clk = 0;
         vector_op = 0;
         src_data = 0;
@@ -67,7 +69,7 @@ module tb;
     reg running; //Indicates that testbench should continue
 
     always @(posedge dut.m1t1) begin
-        if(d_bus !== 8'bx) begin
+        if(d_bus !== 8'b00010000) begin
             running <= 1'b1;
         end
         if(~dut.d1.hold) begin
@@ -76,7 +78,7 @@ module tb;
             vectornum = vectornum + 1;
             {vector_op, vector_res_expected} = {vector_op_next, vector_res_expected_next};
         end
-        if(running && d_bus === 8'bx) begin
+        if(running && d_bus === 8'b00010000) begin
             $display("%d tests completed with %d errors", vectornum_last, errors);
             $finish;
         end
@@ -97,8 +99,9 @@ module tb;
     integer k = 7;
 
     always @(negedge clk) begin
-        if(dut.d1.t_cycle == 2'b11 && vector_res_expected !== 64'bx) begin
-            $display("\nVector number: %d", vectornum_last);
+        if(dut.d1.t_cycle == 2'b11 && dut.d1.m_count - dut.d1.m_cycle == 1 && vector_res_expected !== 64'bx) begin
+            //Compare test vector with register values on falling edge of clock on last T-Cycle of each isntruction
+            $display("\nVector number: %d (%h)", vectornum_last, vectornum_last);
             $display(" Vector: %b", {vector_op, vector_res_expected});
             $display("Vector Op Code: %b (%h)\n  Result: %b\nExpected: %b", vector_op, vector_op, res, vector_res_expected);
             if (res !== vector_res_expected) begin
