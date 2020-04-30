@@ -2,3 +2,8 @@ data/*.vcd
 *.fst
 *.swp
 *.log
+*.rpt
+*.bin
+run
+scripts/*.asm
+scripts/*.txt
