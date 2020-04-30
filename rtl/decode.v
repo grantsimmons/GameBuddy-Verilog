@@ -12,6 +12,7 @@ module decode(
     output reg          reg_drive_addr,
     output reg [1:0]    reg_src_sel, //Controls register file data source mux
     output wire         reg_writeback,
+    output reg          reg_inc_pc,
         //SBUS = 2'b00;
         //ALU = 2'b01;
         //MEM = 2'b10;
@@ -80,7 +81,8 @@ module decode(
         case(t_cycle)
             2'b00: begin //T-Cycle 1
                 rd = 1'b0;
-                alu_begin <= 1'b0;
+                reg_inc_pc = 1'b0;
+                alu_begin = 1'b0;
             end
             2'b01: begin //T-Cycle 2
                 if(next_cycle[4:2] == 3'b000) begin
@@ -127,9 +129,9 @@ module decode(
     //DECODE
     always @(*) begin
         if(next_cycle_high[4:2] == m_count) begin
-            next_cycle <= next_cycle_high & 2'b11; //Go to next instruction if next M-Cycle = number of M-Cycles for current instruction
+            next_cycle = next_cycle_high & 2'b11; //Go to next instruction if next M-Cycle = number of M-Cycles for current instruction
         end else begin
-            next_cycle <= next_cycle_high; //Go to next T-Cycle
+            next_cycle = next_cycle_high; //Go to next T-Cycle
         end
 
         //Set Default Control Values
@@ -175,6 +177,17 @@ module decode(
                     end
 
                     3'b110: begin //8-bit Immediate Load
+                        m_count = 2'd2;
+                        case(m_cycle)
+                            2'b00: begin
+                                read_mem(3'b000); //PC
+                                //Increment PC
+                            end
+                            2'b01: begin
+                                reg_inc_pc <= cycle == 3'b100 ? 1'b1 : 1'b0;
+                                write(instruction[5:3], MEM);
+                            end
+                        endcase
                     end
 
                     3'b111: begin //Accumulator Rotates, Misc. ALU operations
@@ -219,14 +232,11 @@ module decode(
                 else if(instruction[2:0] == 3'b110) begin
                     //Load to memory bus (HL)
                     m_count = 2'd2;
-                    //M-Cycle 1:
-
                     case(m_cycle)
                         2'b00: begin
                             read_mem(instruction[2:0]);
                         end
                         2'b01: begin
-                            //reg_src_sel = MEM;
                             write(instruction[5:3], MEM);
                         end
                     endcase
@@ -278,8 +288,9 @@ module decode(
     endtask
 
     task read_mem;
+        //Send reg16 address to reg file to put on read bus -> address bus
         //Read From
-        input [3:0] task_rd_addr;
+        input [2:0] task_rd_addr;
         reg_drive_addr = 1'b1;
         reg_rd_addr = task_rd_addr;
         //PC = 000
@@ -293,12 +304,13 @@ module decode(
             rd = 1'b1;
         end
 
-        //Send reg16 address to reg file to put on read bus -> address bus
     endtask
 
     task write_mem;
         input [3:0] task_wr_addr;
         input [7:0] task_data;
+        reg_drive_addr = 1'b1;
+        reg_wr_addr = task_wr_addr;
 
     endtask
 endmodule

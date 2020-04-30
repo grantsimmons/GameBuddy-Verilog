@@ -12,6 +12,7 @@ module register_file_new(
     input wire          rd_en,
     input wire [7:0]    data_in,
     input wire [7:0]    alu_flags_in,
+    input wire          inc_pc,
     //Outputs
     output reg [7:0]    data_out,
     output wire [7:0]   flags_out,
@@ -67,20 +68,24 @@ module register_file_new(
 
     reg pc_wr_en;
     reg [15:0] pc_data_in;
+    wire [15:0] pc_next;
+    wire pc_write;
+    assign pc_write = m1t1 | inc_pc;
+    assign pc_next = pc_data_in + 1'b1;
     //wire [15:0] test;
-    register #(16) pc(.clk(m1t1), .rst(rst), .data_in(pc_data_in), .wr_en(pc_wr_en));
+    register #(16) pc(.clk(pc_write), .rst(rst), .data_in(pc_data_in), .wr_en(pc_wr_en));
     //assign addr_bus = pc.data_out;
     //register #(16) sp(.clk(clk), .rst(rst), .data_out(addr_bus));
 
     //PC Auto-increment for testing
-    always @(posedge m1t1 or negedge rst) begin
+    always @(posedge m1t1 or posedge inc_pc or negedge rst) begin
         if(~rst) begin
             pc_data_in = 0;
             pc_wr_en = 0;
         end
         else begin
-            pc_data_in <= pc_data_in + 1;
-            pc_wr_en <= 1'b1;
+            pc_data_in <= pc_next;
+            pc_wr_en = 1'b1;
         end
     end
 

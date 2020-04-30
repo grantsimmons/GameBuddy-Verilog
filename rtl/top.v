@@ -70,6 +70,7 @@ module top(
                             .rd_en(d1.reg_rd_en), 
                             .data_in(reg_data_in), 
                             .alu_flags_in(a1.flags_res),
+                            .inc_pc(d1.reg_inc_pc),
                             .data_out(reg_data_out), 
                             .addr_bus(addr_bus)
                         );
