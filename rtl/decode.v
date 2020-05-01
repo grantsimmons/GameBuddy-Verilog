@@ -21,6 +21,8 @@ module decode(
     output reg [2:0]    alu_op,
     output reg [7:0]    alu_src_data,
     output reg [7:0]    alu_dest_data,
+    output reg [2:0]    alu_bit_index,
+    output reg          alu_incdec,
     output reg          ext,
     output reg          misc,
     output reg          hold, //Zeroes counters until next valid clock cycle
@@ -33,6 +35,8 @@ module decode(
 
     //Instruction Register
     reg [7:0] instruction; //The all-important instruction register
+    wire [8:0] instruction_alias;
+    assign instruction_alias = {ext, instruction};
 
     //Timing Controls
     reg [4:0] cycle, next_cycle; //3 for Max M-Cycle count, 2 for T-Cycle count
@@ -50,6 +54,14 @@ module decode(
     always @(m1t1 or data_bus_in) begin
         if(m1t1) begin
             instruction <= data_bus_in; //Fetch next instruction from memory buffer
+            misc = 1'b0;
+            ext = 1'b0;
+        end
+    end
+
+    always @(m_cycle or t_cycle or ext) begin
+        if(ext && t_cycle == 2'b00 && m_cycle == 2'b01) begin
+            instruction = data_bus_in; //Fetch extension instruction from memory buffer
         end
     end
 
@@ -85,6 +97,7 @@ module decode(
                 alu_begin = 1'b0;
             end
             2'b01: begin //T-Cycle 2
+                reg_inc_pc <= 1'b0;
                 if(next_cycle[4:2] == 3'b000) begin
                     //Put program counter on address bus if next M-cycle is a M1 cycle
                 end
@@ -138,131 +151,243 @@ module decode(
         reg_wr_en = 1'b0;
         reg_rd_en = 1'b0;
         reg_drive_addr = 1'b0; //Drive PC by default
-        misc = 1'b0;
-        ext = 1'b0;
+        alu_incdec = 1'b0;
 
-        case(prefix)
-            2'b00: begin
-                m_count = 1'b1;
-                case(instruction[2:0])
-                    3'b000: begin //MISC
-                    end
+        if(ext == 1'b0) begin
+            case(prefix)
+                2'b00: begin
+                    m_count = 1'b1;
+                    case(instruction[2:0])
+                        3'b000: begin //MISC
+                        end
 
-                    3'b001: begin //16-Bit Add, 16-bit LD from Memory
-                    end
+                        3'b001: begin //16-Bit Add, 16-bit LD from Memory
+                            if(instruction[3]) begin
+                                //16-Bit Add
+                            end
+                            else begin
+                                m_count = 2'd3;
+                                case(instruction[5:4]) //FIXME: is there a way to make this more efficient?
+                                    2'b00: begin //BC
+                                        case(m_cycle)
+                                            2'b00: begin //M1
+                                                read_mem(2'b000); //Read first byte (LSB)
+                                            end
+                                            2'b01: begin //M2
+                                                if(t_cycle == 2'b00) reg_inc_pc <= 1'b1;
+                                                //reg_inc_pc <= cycle == 3'b100 ? 1'b1 : 1'b0; //Increment PC
+                                                read_mem(2'b000); //Read second byte (MSB)
+                                                write(3'b001, MEM);
+                                            end
+                                            2'b10: begin //M3
+                                                if(t_cycle == 2'b00) reg_inc_pc <= 1'b1;
+                                                //reg_inc_pc <= cycle == 4'b1000 ? 1'b1 : 1'b0; //Increment PC
+                                                write(3'b000, MEM);
+                                            end
+                                        endcase
+                                    end
+                                    2'b01: begin //DE
+                                        case(m_cycle)
+                                            2'b00: begin //M1
+                                                read_mem(2'b000); //Read first byte (LSB)
+                                            end
+                                            2'b01: begin //M2
+                                                if(t_cycle == 2'b00) reg_inc_pc <= 1'b1;
+                                                //reg_inc_pc <= cycle == 3'b100 ? 1'b1 : 1'b0; //Increment PC
+                                                read_mem(2'b000); //Read second byte (MSB)
+                                                write(3'b011, MEM);
+                                            end
+                                            2'b10: begin //M3
+                                                if(t_cycle == 2'b00) reg_inc_pc <= 1'b1;
+                                                //reg_inc_pc <= cycle == 4'b1000 ? 1'b1 : 1'b0; //Increment PC
+                                                write(3'b010, MEM);
+                                            end
+                                        endcase
+                                    end
+                                    2'b10: begin //HL
+                                        case(m_cycle)
+                                            2'b00: begin //M1
+                                                read_mem(2'b000); //Read first byte (LSB)
+                                            end
+                                            2'b01: begin //M2
+                                                if(t_cycle == 2'b00) reg_inc_pc <= 1'b1;
+                                                //reg_inc_pc <= cycle == 3'b100 ? 1'b1 : 1'b0; //Increment PC
+                                                read_mem(2'b000); //Read second byte (MSB)
+                                                write(3'b101, MEM);
+                                            end
+                                            2'b10: begin //M3
+                                                if(t_cycle == 2'b00) reg_inc_pc <= 1'b1;
+                                                //reg_inc_pc <= cycle == 4'b1000 ? 1'b1 : 1'b0; //Increment PC
+                                                write(3'b100, MEM);
+                                            end
+                                        endcase
+                                    end
+                                    2'b11: begin //SP
+                                    end
+                                endcase
+                            end
 
-                    3'b010: begin //Misc Memory access
-                    end
+                        end
 
-                    3'b011: begin //16-bit Inc/Dec
-                    end
+                        3'b010: begin //Misc Memory access
+                        end
 
-                    3'b100: begin //8-bit Increment
-                        //TODO: Pull INC/DEC out of ALU
-                        if(instruction[5:3] != 3'b110) begin
+                        3'b011: begin //16-bit Inc/Dec
+                        end
+
+                        3'b100: begin //8-bit Increment
+                            //TODO: Pull INC/DEC out of ALU
+                            if(instruction[5:3] != 3'b110) begin
+                                m_count = 2'd1;
+                                alu_incdec = 1'b1;
+                                begin_alu(instruction[2:0], instruction[5:3], 1'b1, 1'b1);
+                                write(instruction[5:3], ALU);
+                            end
+                        end
+
+                        3'b101: begin //8-bit Decrement
+                            if(instruction[5:3] != 3'b110) begin
+                                m_count = 2'd1; //FIXME: Same format as INC. Condense?
+                                alu_incdec = 1'b1;
+                                begin_alu(instruction[2:0], instruction[5:3], 1'b1, 1'b1);
+                                write(instruction[5:3], ALU);
+                            end
+                        end
+
+                        3'b110: begin //8-bit Immediate Load
+                            m_count = 2'd2;
+                            case(m_cycle)
+                                2'b00: begin
+                                    read_mem(3'b000); //PC
+                                    //Increment PC
+                                end
+                                2'b01: begin
+                                    if(t_cycle == 2'b00) reg_inc_pc <= 1'b1;
+                                    write(instruction[5:3], MEM);
+                                end
+                            endcase
+                        end
+
+                        3'b111: begin //Accumulator Rotates, Misc. ALU operations
                             m_count = 2'd1;
-                            ext = 1'b1;
-                            begin_alu(instruction[2:0], instruction[5:3], 1'b1, 1'b1);
-                            write(instruction[5:3], ALU);
-                        end
-                    end
+                            begin_alu(instruction[5:3], instruction[2:0], 1'b1, 1'b0);
+                                //misc = instruction[5]; //Misc ALU instructions
+                                //reg_rd_addr = instruction[2:0]; //Doesn't matter in this scenario. Will matter for extension rotates
+                                //reg_rd_en = 1'b1; //Not for SCF/CCF
 
-                    3'b101: begin //8-bit Decrement
-                        if(instruction[5:3] != 3'b110) begin
-                            m_count = 2'd1; //FIXME: Same format as INC. Condense?
-                            ext = 1'b1;
-                            begin_alu(instruction[2:0], instruction[5:3], 1'b1, 1'b1);
-                            write(instruction[5:3], ALU);
+                            if(instruction[5:4] != 2'b11) begin
+                                write(3'b111, ALU); //Rotates, NOT, and DAA writeback to A
+                            end
                         end
-                    end
+                    endcase
+                end
 
-                    3'b110: begin //8-bit Immediate Load
+                2'b01: begin
+                    //LD: 01(3:dest)(3:src)
+                    if(instruction[5:3] != 3'b110 && instruction[2:0] != 3'b110) begin
+                        //Load to reg
+                        m_count = 1'd1;
+                        reg_rd_addr = instruction[2:0]; //Source
+                        //reg_src_sel = SBUS;
+                        reg_rd_en = 1'b1;
+                        write(instruction[5:3], SBUS);
+                    end
+                    else if(instruction[5:3] == 3'b110) begin
+                        //Load to memory
+                        m_count = 2'd2;
+                        //M-Cycle 1:
+                        //reg_rd_addr = instruction[2:0]; //Source
+                        //reg_rd_en = 1'b1;
+                        
+
+                        //Place value on d_bus
+                        //Place HL on addr
+                        //mem_WE = 1'b1;
+                        //M-Cycle 2:
+                        //Write d_bus to mem
+                        
+                    end
+                    else if(instruction[2:0] == 3'b110) begin
+                        //Load to memory bus (HL)
                         m_count = 2'd2;
                         case(m_cycle)
                             2'b00: begin
-                                read_mem(3'b000); //PC
-                                //Increment PC
+                                read_mem(instruction[2:0]);
                             end
                             2'b01: begin
-                                reg_inc_pc <= cycle == 3'b100 ? 1'b1 : 1'b0;
                                 write(instruction[5:3], MEM);
                             end
                         endcase
                     end
-
-                    3'b111: begin //Accumulator Rotates, Misc. ALU operations
-                        m_count = 2'd1;
-                        begin_alu(instruction[5:3], instruction[2:0], 1'b1, 1'b0);
-                            //misc = instruction[5]; //Misc ALU instructions
-                            //reg_rd_addr = instruction[2:0]; //Doesn't matter in this scenario. Will matter for extension rotates
-                            //reg_rd_en = 1'b1; //Not for SCF/CCF
-
-                        if(instruction[5:4] != 2'b11) begin
-                            write(3'b111, ALU); //Rotates, NOT, and DAA writeback to A
-                        end
+                    else begin
+                        //Halt
                     end
-                endcase
-            end
-
-            2'b01: begin
-                //LD: 01(3:dest)(3:src)
-                if(instruction[5:3] != 3'b110 && instruction[2:0] != 3'b110) begin
-                    //Load to reg
-                    m_count = 1'd1;
-                    reg_rd_addr = instruction[2:0]; //Source
-                    //reg_src_sel = SBUS;
-                    reg_rd_en = 1'b1;
-                    write(instruction[5:3], SBUS);
                 end
-                else if(instruction[5:3] == 3'b110) begin
-                    //Load to memory
-                    m_count = 2'd2;
-                    //M-Cycle 1:
-                    //reg_rd_addr = instruction[2:0]; //Source
-                    //reg_rd_en = 1'b1;
-                    
 
-                    //Place value on d_bus
-                    //Place HL on addr
-                    //mem_WE = 1'b1;
-                    //M-Cycle 2:
-                    //Write d_bus to mem
-                    
+                2'b10: begin
+                    //8-bit Accumulator Arithmetic and logic
+                    //op[5:3] = operation
+                    //op[2:0] = reg select
+                    m_count = 2'd1;
+                    begin_alu(instruction[5:3], instruction[2:0], 1'b0, 1'b1);
+                    write(3'b111, ALU);
+
                 end
-                else if(instruction[2:0] == 3'b110) begin
-                    //Load to memory bus (HL)
-                    m_count = 2'd2;
-                    case(m_cycle)
-                        2'b00: begin
-                            read_mem(instruction[2:0]);
-                        end
-                        2'b01: begin
-                            write(instruction[5:3], MEM);
+
+                2'b11: begin
+                    //Memory Operations
+                    //Flow Control
+                    case(instruction[2:0])
+                        3'b011: begin
+                            if(instruction[5:3] == 3'b001) begin
+                                m_count = 2'd2; //FIXME: Combing M-Cycle timing for extension instructions
+                                case(m_cycle)
+                                    2'b00: read_mem(3'b000); //Read next program byte
+                                    2'b01: begin
+                                        ext <= 1'b1; //Enter CB Extension mode
+                                        if(t_cycle == 2'b00) reg_inc_pc <= 1'b1; //Increment PC
+                                    end
+                                endcase
+                            end
                         end
                     endcase
                 end
-                else begin
-                    //Halt
+            endcase
+        end
+        else begin //CB Extension instructions
+            case(prefix)
+                2'b00: begin //Arithmetic
+                    if(instruction[2:0] !== 3'b110) begin
+                        m_count = 2'd2;
+                        begin_alu(instruction[5:3], instruction[2:0], 1'b0, 1'b1);
+                        write(instruction[2:0], ALU);
+                    end
                 end
-            end
-
-            2'b10: begin
-                //8-bit Accumulator Arithmetic and logic
-                //op[5:3] = operation
-                //op[2:0] = reg select
-                m_count = 2'd1;
-                begin_alu(instruction[5:3], instruction[2:0], 1'b0, 1'b1);
-                write(3'b111, ALU);
-
-            end
-
-            2'b11: begin
-                //Memory Operations
-                //Flow Control
-                write(instruction[5:3], DEBUG);
-                //reg_src_sel = DEBUG;
-            end
-        endcase
+                2'b01: begin //Bit Evaluate
+                    if(instruction[2:0] !== 3'b110) begin
+                        m_count = 2'd2;
+                        begin_alu({1'b0, instruction[7:6]}, instruction[2:0], 1'b1, 1'b1);
+                    end
+                    alu_bit_index = instruction[5:3];
+                end
+                2'b10: begin //Bit Reset
+                    if(instruction[2:0] !== 3'b110) begin
+                        m_count = 2'd2;
+                        begin_alu({1'b0, instruction[7:6]}, instruction[2:0], 1'b1, 1'b1);
+                        write(instruction[2:0], ALU);
+                    end
+                    alu_bit_index = instruction[5:3];
+                end
+                2'b11: begin //Bit Set
+                    if(instruction[2:0] !== 3'b110) begin
+                        m_count = 2'd2;
+                        begin_alu({1'b0, instruction[7:6]}, instruction[2:0], 1'b1, 1'b1);
+                        write(instruction[2:0], ALU);
+                    end
+                    alu_bit_index = instruction[5:3];
+                end
+            endcase
+        end
     end
 
     task write; //Enables Register Write-back, synced to register file writeback clock

@@ -4,8 +4,10 @@ module alu(
 	input wire			alu_begin,
     input wire [7:0]    src_data,
     input wire [7:0]    dest_data,
+    input wire [2:0]    bit_index,
 	input wire [7:0]	flags_in,
     //input wire          size, //0 = 8-bit; 1 = 16-bit
+    input wire          incdec,
     input wire          ext,  //CB Extension instructions
     input wire          misc, //Non-arithmetic/logic instructions
     output reg [7:0]    res,  //7:0 for 8-bit instructions
@@ -64,7 +66,9 @@ module alu(
     localparam F_SUB   = 6; //Indicates Add/Subtract
     localparam F_ZERO  = 7; //Indicates 0 result
 
-	reg[3:0] half_res;
+	reg [3:0] half_res;
+    wire [4:0] op_alias;
+    assign op_alias = {ext | incdec, misc, op}; //VERIFICATION ONLY
 
 	always @(t_cycle) begin
 		if(t_cycle == 2'b00) begin
@@ -74,19 +78,25 @@ module alu(
 	end
 
     always @(posedge alu_begin) begin
-		if(ext) begin //EXT instructions
+		if(ext | incdec) begin //EXT instructions
 			if(misc) begin //EXT+MISC instructions
 				//op   = instruction[7:6]
 				//src  = instruction[5:3] (encoded bit number)
 				//dest = instruction[2:0] (register index)
 				case(op)
 					BIT: begin
+                        //res = 8'b0 | src_data[bit_index]; //Use this if using assigned F_ZERO
+                        flags_res[F_ZERO] = src_data[bit_index] == 1'b0 ? 1'b1 : 1'b0;
+                        flags_res[F_SUB] = 1'b0;
+                        flags_res[F_HALF] = 1'b1;
 					end
 
 					RES: begin
+                        res = src_data & ~(1'b1 << bit_index);
 					end
 
 					SET: begin
+                        res = src_data | (1'b1 << bit_index);
 					end
 
 					INC: begin
@@ -136,7 +146,7 @@ module alu(
 					end
 
 					SLA: begin
-						{flags_res[F_CARRY], res} = {res, 1'b0};
+						{flags_res[F_CARRY], res} = {src_data[7:0], 1'b0};
 						flags_res[F_ZERO] = res == 8'b0 ? 1'b1 : 1'b0;
 						flags_res[F_SUB:F_HALF] = 2'b00;
 					end

@@ -82,6 +82,8 @@ module top(
                             .dest_data(r1.a.data_out),
                             .flags_in(r1.flags_out),
                             .ext(d1.ext),
+                            .bit_index(d1.alu_bit_index),
+                            .incdec(d1.alu_incdec),
                             .misc(d1.misc),
                             .res(alu_res)
                         );

@@ -78,7 +78,7 @@ module register_file_new(
     //register #(16) sp(.clk(clk), .rst(rst), .data_out(addr_bus));
 
     //PC Auto-increment for testing
-    always @(posedge m1t1 or posedge inc_pc or negedge rst) begin
+    always @(posedge pc_write or negedge rst) begin
         if(~rst) begin
             pc_data_in = 0;
             pc_wr_en = 0;
