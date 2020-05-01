@@ -56,7 +56,6 @@ with open("../alias/ops.alias", 'r') as alias:
                     for line in asmfile:
                         op = line.strip() #Get stimulus instruction (ASM)
                         binfile.write(op_alias.get(op, 'NOP').to_bytes(1, 'little')) #Write ASCII binary
-                        if op != 'STOP':
-                            txtfile.write(bin(op_alias.get(op, 'NOP')).split('b')[1].zfill(8) + '\n')
+                        txtfile.write(bin(op_alias.get(op, 'NOP')).split('b')[1].zfill(8) + '\n')
     else:
         sys.exit("Please specify a file to convert using -f")

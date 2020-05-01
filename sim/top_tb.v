@@ -40,12 +40,13 @@ module tb;
     integer i = 0;
     integer j = 0;
     integer l = 0;
-    integer r, file, start, count;
     initial begin //Setup
         $readmemb("sim/stim.tv", testvectors); //Load test vectors
         for(l = 0; l < $size(dut.mem.mem); l = l + 1)
             dut.mem.mem[l] = 8'b0;
         $readmemb("scripts/stim.txt", dut.mem.mem); //Load program
+        //for(l = 0; l < $size(dut.mem.mem); l = l + 1)
+        //    $display("%h: %h", l, dut.mem.mem[l]);
         clk = 0;
         vector_op = 0;
         src_data = 0;
