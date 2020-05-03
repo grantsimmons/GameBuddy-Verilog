@@ -1,0 +1,210 @@
+/*
+Difficulty:
+0. Formalities needed
+    Requires a few lines of new code, virtually no planning or thought
+1. Easily Attainable
+    Utilizes infrastructure alread avaialble
+2. Requires some time
+    Utilizes infrastructure in planning but not yet available
+3. Requires significant thought
+    Requires new infrastructure planning or multiple features not yet
+    implemented
+4. Requires an overhaul
+    Requires architectural changes
+5. How the hell will I do this?
+    Requires scrapping entire modules/project
+
+Features:
+  1 Memory write *Implemented!
+  2 Stack Pointer
+  3 PC Write
+  4 Temp Registers
+  5 16-Bit Arithmetic/Logic
+  6 PC/SP/HL Auto-Incr/Decr
+  7 Subtraction
+  8 Interrupts
+  9 Other Components (PPU, DMA, LCD, etc.)
+  ? Unknown
+*/
+
+
+0     NOP           00 000 000
+3 124 LDmnnSP       00 001 000
+3 ?   STOP          00 010 000
+2 34  JRn           00 011 000
+3 34  JRNZn         00 100 000
+3 34  JRNCn         00 110 000
+3 34  JRZn          00 101 000
+3 34  JRCn          00 111 000
+      
+2 5   ADDHLBC       00 00 1 001
+2 5   ADDHLDE       00 01 1 001
+2 5   ADDHLHL       00 10 1 001
+2 25  ADDHLSP       00 11 1 001
+      
+2 16  LDImHLA       00 10 0 010
+2 16  LDDmHLA       00 11 0 010
+2 6   LDIAmHL       00 10 1 010
+2 6   LDDAmHL       00 11 1 010
+      
+2 5   INCBC         00 00 0 011
+2 5   INCDE         00 01 0 011 
+2 5   INCHL         00 10 0 011 
+2 5   INCSP         00 11 0 011 
+2 5   DECBC         00 00 1 011
+2 5   DECDE         00 01 1 011 
+2 5   DECHL         00 10 1 011 
+2 5   DECSP         00 11 1 011 
+      
+2 2   LDSPnn        00 11 0 001
+
+3 ?   HALT          01 110 110 
+      
+2 8   SBCAA         10 011 111
+2 8   SBCAB         10 011 000
+2 8   SBCAC         10 011 001
+2 8   SBCAD         10 011 010
+2 8   SBCAE         10 011 011
+2 8   SBCAH         10 011 100
+2 8   SBCAL         10 011 101
+2 8   SBCAmHL       10 011 110
+2 8   SUBAA         10 010 111
+2 8   SUBAB         10 010 000
+2 8   SUBAC         10 010 001
+2 8   SUBAD         10 010 010
+2 8   SUBAE         10 010 011
+2 8   SUBAH         10 010 100
+2 8   SUBAL         10 010 101
+2 8   SUBAmHL       10 010 110
+2 8   CPA           10 111 111
+2 8   CPB           10 111 000
+2 8   CPC           10 111 001
+2 8   CPD           10 111 010
+2 8   CPE           10 111 011
+2 8   CPH           10 111 100
+2 8   CPL           10 111 101
+2 8   CPmHL         10 111 110
+      
+3 236  RETNZ         11 000 000
+3 236  RETZ          11 001 000
+3 236  RETNC         11 010 000
+3 236  RETC          11 011 000
+      
+3 19  LDHmnA        11 100 000
+3 19  LDHAmn        11 110 000
+3 25  ADDSPd        11 101 000
+3 5   LDHLSPd       11 111 000
+      
+3 236 RET           11 001 001
+3 2356 RETI         11 011 001
+2 3   JPmHL         11 101 001
+1     LDSPHL        11 111 001
+      
+2 26  POPBC         11 000 001
+2 26  POPDE         11 010 001
+2 26  POPHL         11 100 001
+2 26  POPAF         11 110 001
+      
+3 12346 CALLNZnn      11 000 100
+3 12346 CALLZnn       11 001 100
+3 12346 CALLNCnn      11 010 100
+3 12346 CALLCnn       11 011 100
+      
+3      XX5           11 100 100
+3      XX7           11 101 100
+3      XXA           11 110 100
+3      XXB           11 111 100
+      
+3 12346 CALLnn        11 001 101
+3     XX3           11 011 101
+3     XX8           11 101 101
+3     XXC           11 111 101
+      
+3 126 PUSHBC        11 000 101
+3 126 PUSHDE        11 010 101
+3 126 PUSHHL        11 100 101
+3 126 PUSHAF        11 110 101
+      
+3 34  JPNZnn        11 000 010
+3 34  JPZnn         11 001 010
+3 34  JPNCnn        11 010 010
+3 34  JPCnn         11 011 010
+      
+3 9   LDHmCA        11 100 010
+3     XX9           11 110 010
+2 14  LDmnnA        11 101 010
+2 14  LDAmnn        11 111 010
+      
+3 34  JPnn          11 000 011
+3     XX1           11 010 011
+3     XX2           11 011 011
+
+      
+3     XX4           11 100 011
+3     XX6           11 101 011
+3 8   DI            11 110 011
+3 8   EI            11 111 011
+      
+2 7   SBCAn         11 011 110
+2 7   SUBAn         11 010 110
+      
+2 3   RST0          11 000 111
+2 3   RST8          11 001 111
+2 3   RST10         11 010 111
+2 3   RST18         11 011 111
+2 3   RST20         11 100 111
+2 3   RST28         11 101 111
+2 3   RST30         11 110 111
+2 3   RST38         11 111 111
+      
+
+
+Coming up:
+
+1     INCmHL        00 110 100 
+1     DECmHL        00 110 101 
+1     LDmHLn        00 110 110 
+1     CPn           11 111 110
+      
+//1     LDBCnn        00 00 0 001
+//1     LDDEnn        00 01 0 001
+//1     LDHLnn        00 10 0 001
+
+//1     LDAmBC        00 00 1 010
+//1     LDAmDE        00 01 1 010
+//1     LDmBCA        00 00 0 010
+//1     LDmDEA        00 01 0 010
+
+//1     ADDAn         11 000 110
+//1     ADCAn         11 001 110
+
+//1     ANDn          11 100 110
+//1     XORn          11 101 110
+//1     ORn           11 110 110
+
+      //Extensions:
+      
+//1   00 000 110 RLCmHL
+//1   00 001 110 RRCmHL
+//1   00 010 110 RLmHL 
+//1   00 011 110 RRmHL 
+//1   00 100 110 SLAmHL
+//1   00 101 110 SRAmHL
+//1   00 110 110 SWAPmHL
+//1   00 111 110 SRLmHL
+//1   10 000 110 RES0mHL
+//1   10 001 110 RES1mHL
+//1   10 010 110 RES2mHL
+//1   10 011 110 RES3mHL
+//1   10 100 110 RES4mHL
+//1   10 101 110 RES5mHL
+//1   10 110 110 RES6mHL
+//1   10 111 110 RES7mHL
+//1   11 000 110 SET0mHL
+//1   11 001 110 SET1mHL
+//1   11 010 110 SET2mHL
+//1   11 011 110 SET3mHL
+//1   11 100 110 SET4mHL
+//1   11 101 110 SET5mHL
+//1   11 110 110 SET6mHL
+//1   11 111 110 SET7mHL
