@@ -10,6 +10,7 @@ module top(
     output wire [15:0]  addr_bus,
     output wire [7:0]   data_out,
     output wire         rd,
+    output wire         wr,
     output wire         m1t1
     );
 
@@ -28,7 +29,6 @@ module top(
     reg [15:0] mem_addr_muxed; //Muxes DMA Address Bus and Address Bus Buffer
     wire [7:0] mem_data_out; //External Memory Output
     reg [7:0] mem_data_in; //External Memory Input
-    reg mem_wr_en;
     reg [7:0] int_data_in; //Internal Data Input. Buffers mem_data_out
     reg [7:0] int_data_out; //Internal Data Output. Buffered by mem_data_in
 
@@ -50,6 +50,7 @@ module top(
                             .reg_src_sel(reg_src_sel), 
                             //.addr_bus(addr_bus), 
                             .rd(rd), 
+                            .wr(wr),
                             .m1t1(m1t1),
                             .m_cycle(m_cycle),
                             .t_cycle(t_cycle)
@@ -64,6 +65,7 @@ module top(
                             .rst(rst), 
                             .wr_sel(d1.reg_wr_addr), 
                             .rd_sel(d1.reg_rd_addr), 
+                            .mem_addr_sel(d1.reg_mem_addr_sel),
                             .drive_addr(d1.reg_drive_addr),
                             .wr_en(d1.reg_wr_en), 
                             .wr_en_flags(a1.wr_en_flags),
@@ -72,13 +74,16 @@ module top(
                             .alu_flags_in(a1.flags_res),
                             .inc_pc(d1.reg_inc_pc),
                             .data_out(reg_data_out), 
+                            .mem_data_out(int_data_out),
                             .addr_bus(addr_bus)
                         );
 
     alu                 a1( .t_cycle(t_cycle),
                             .op(d1.alu_op),
                             .alu_begin(d1.alu_begin),
-                            .src_data(r1.data_out),
+                            .reg_data(r1.data_out),
+                            .mem_data(int_data_in),
+                            .src_sel(d1.alu_src_sel),
                             .dest_data(r1.a.data_out),
                             .flags_in(r1.flags_out),
                             .ext(d1.ext),
@@ -90,7 +95,7 @@ module top(
 
     memory              mem(.addr_bus(mem_addr_muxed), 
                             .data_in(mem_data_in), 
-                            .wr_en(mem_wr_en), 
+                            .wr_en(wr), 
                             .rd_en(rd), 
                             .data_out(mem_data_out)
                         );
@@ -107,15 +112,16 @@ module top(
     always @(t_cycle) begin
         if(t_cycle == 2'b00) begin
             //CPU samples external data bus on T1
-            int_data_in <= mem_data_out;
+            int_data_in = mem_data_out;
         end
         //TODO: Find out when this actually happens
-        mem_data_in <= int_data_out;
+        if(t_cycle == 2'b10) begin
+            mem_data_in = int_data_out;
+        end
     end
 
     //Memory Address Mux
     always @(*) begin
-        mem_wr_en <= 1'b0;
         case(mem_ctrl_sel)
             1'b0: mem_addr_muxed <= addr_bus_buf;
             //1'b1: mem_addr_muxed <= dma_addr_bus;
@@ -127,7 +133,7 @@ module top(
     always @(*) begin
         case(reg_src_sel)
             2'b00: begin
-                reg_data_in = reg_data_out; //Register bus
+                reg_data_in = reg_data_out; //Register bus (Loopback)
             end
             2'b01: begin
                 reg_data_in = alu_res; //ALU result

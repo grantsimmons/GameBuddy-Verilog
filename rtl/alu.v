@@ -2,7 +2,11 @@ module alu(
 	input wire [1:0]	t_cycle,
     input wire [2:0]    op,   //ALU Operation
 	input wire			alu_begin,
-    input wire [7:0]    src_data,
+    input wire [7:0]    reg_data,
+    input wire [7:0]    mem_data,
+    input wire          src_sel,
+        //1'b0 = reg_data
+        //1'b1 = mem_data
     input wire [7:0]    dest_data,
     input wire [2:0]    bit_index,
 	input wire [7:0]	flags_in,
@@ -14,6 +18,10 @@ module alu(
     output reg [7:0]    flags_res, //Flag results > Flag register
 	output reg			wr_en_flags
     );
+
+    wire [7:0]          src_data;
+    //Source Mux
+    assign src_data = src_sel ? mem_data : reg_data;
 
     //Base instructions
     localparam ADD  = 3'b000;

@@ -6,6 +6,7 @@ module register_file_new(
     input wire          rst,
     input wire [2:0]    wr_sel, //Internal 3-bit register address
     input wire [2:0]    rd_sel, //Internal 3-bit register address
+    input wire [2:0]    mem_addr_sel,
     input wire          drive_addr, //Drive address bus this cycle
     input wire          wr_en,
     input wire          wr_en_flags,
@@ -15,6 +16,7 @@ module register_file_new(
     input wire          inc_pc,
     //Outputs
     output reg [7:0]    data_out,
+    output reg [7:0]    mem_data_out,
     output wire [7:0]   flags_out,
     //output reg [7:0]    data_out_8,
     //output reg [15:0]    data_out_16,
@@ -28,6 +30,7 @@ module register_file_new(
     localparam REG_E = 3'b011;
     localparam REG_H = 3'b100;
     localparam REG_L = 3'b101;
+    localparam MEM   = 3'b110;
     //110 = data bus //Double as F?
 
     reg [7:0]  demux_data_a,
@@ -91,7 +94,8 @@ module register_file_new(
 
     always @(*) begin
         if(drive_addr) begin
-            case(rd_sel)
+            //case(rd_sel) //TODO: Keep an eye out for this. May encounter issues if you do ALU operation and memory operation at the same time
+            case(mem_addr_sel)
                 3'b000: addr_bus = pc.data_out;
                 //3'b001: addr_bus = {temp_msb.data_out, temp_lsb.data_out};
                 3'b100: addr_bus = {b.data_out, c.data_out};
@@ -222,6 +226,23 @@ module register_file_new(
                 demux_wr_en_h = 0;
                 demux_wr_en_l = wr_en;
             end
+            MEM: begin
+                demux_data_a = 0;
+                demux_data_b = 0;
+                demux_data_c = 0;
+                demux_data_d = 0;
+                demux_data_e = 0;
+                demux_data_h = 0;
+                demux_data_l = 0;
+                demux_wr_en_a = 0;
+                demux_wr_en_b = 0;
+                demux_wr_en_c = 0;
+                demux_wr_en_d = 0;
+                demux_wr_en_e = 0;
+                demux_wr_en_h = 0;
+                demux_wr_en_l = 0;
+                mem_data_out = data_in; //Source mux must be Data Bus
+            end
             default: begin
                 demux_data_a = 0;
                 demux_data_b = 0;
@@ -264,6 +285,9 @@ module register_file_new(
                 REG_L: begin
                     data_out = rdmux_data_out_l;
                 end 
+                //MEM: begin //Data bus passthrough
+                //    data_out = data_in;
+                //end
                 default: begin
                     data_out = 0;
                 end

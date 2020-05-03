@@ -9,17 +9,19 @@ module decode(
     output reg          reg_wr_en,
     output reg [2:0]    reg_rd_addr,
     output reg [2:0]    reg_wr_addr,
+    output reg [2:0]    reg_mem_addr_sel,
     output reg          reg_drive_addr,
     output reg [1:0]    reg_src_sel, //Controls register file data source mux
-    output wire         reg_writeback,
-    output reg          reg_inc_pc,
         //SBUS = 2'b00;
         //ALU = 2'b01;
         //MEM = 2'b10;
         //DEBUG = 2'b11;
+    output wire         reg_writeback,
+    output reg          reg_inc_pc,
     output reg          alu_begin,
     output reg [2:0]    alu_op,
     output reg [7:0]    alu_src_data,
+    output reg          alu_src_sel,
     output reg [7:0]    alu_dest_data,
     output reg [2:0]    alu_bit_index,
     output reg          alu_incdec,
@@ -27,6 +29,7 @@ module decode(
     output reg          misc,
     output reg          hold, //Zeroes counters until next valid clock cycle
     output reg          rd,
+    output reg          wr,
     output wire         m1t1, //Indicates M-Cycle 1, T-Cycle 1; rising edge triggers instruction pipe
     output wire [3:0]   m_cycle,
     output wire [1:0]   t_cycle
@@ -56,6 +59,7 @@ module decode(
             instruction <= data_bus_in; //Fetch next instruction from memory buffer
             misc = 1'b0;
             ext = 1'b0;
+            alu_src_sel = 1'b0; //Default to register source
         end
     end
 
@@ -76,6 +80,7 @@ module decode(
             next_cycle = 5'b0;
             hold = 1'b1;
             rd = 1'b0;
+            wr = 1'b0;
             instruction = 8'b0;
             reg_wr_en = 1'b0;
             reg_rd_en = 1'b0;
@@ -89,7 +94,7 @@ module decode(
     end
 
     //Decode FSM
-    always @(t_cycle) begin //Make combinational?
+    always @(t_cycle or clk) begin //Make combinational?
         case(t_cycle)
             2'b00: begin //T-Cycle 1
                 rd = 1'b0;
@@ -114,6 +119,9 @@ module decode(
             2'b11: begin //T-Cycle 4
                 if(hold) begin
                     hold <= 1'b0;
+                end
+                if(~clk) begin
+                    wr <= 1'b0; //Memory write latched on T4 falling
                 end
             end
         endcase
@@ -168,7 +176,8 @@ module decode(
                             else begin
                                 m_count = 2'd3;
                                 case(instruction[5:4]) //FIXME: is there a way to make this more efficient?
-                                    2'b00: begin //BC
+                                    //TODO: Make 16-bit state machine
+                                    2'b00: begin //LDBCnn
                                         case(m_cycle)
                                             2'b00: begin //M1
                                                 read_mem(2'b000); //Read first byte (LSB)
@@ -186,7 +195,7 @@ module decode(
                                             end
                                         endcase
                                     end
-                                    2'b01: begin //DE
+                                    2'b01: begin //LDDEnn
                                         case(m_cycle)
                                             2'b00: begin //M1
                                                 read_mem(2'b000); //Read first byte (LSB)
@@ -204,20 +213,18 @@ module decode(
                                             end
                                         endcase
                                     end
-                                    2'b10: begin //HL
+                                    2'b10: begin //LDHLnn
                                         case(m_cycle)
                                             2'b00: begin //M1
                                                 read_mem(2'b000); //Read first byte (LSB)
                                             end
                                             2'b01: begin //M2
                                                 if(t_cycle == 2'b00) reg_inc_pc <= 1'b1;
-                                                //reg_inc_pc <= cycle == 3'b100 ? 1'b1 : 1'b0; //Increment PC
                                                 read_mem(2'b000); //Read second byte (MSB)
                                                 write(3'b101, MEM);
                                             end
                                             2'b10: begin //M3
                                                 if(t_cycle == 2'b00) reg_inc_pc <= 1'b1;
-                                                //reg_inc_pc <= cycle == 4'b1000 ? 1'b1 : 1'b0; //Increment PC
                                                 write(3'b100, MEM);
                                             end
                                         endcase
@@ -230,17 +237,39 @@ module decode(
                         end
 
                         3'b010: begin //Misc Memory access
+                            m_count = 2'd2;
+                            if(instruction[5]) begin
+                            end
+                            else begin //(BC), (DE) access
+                                if(instruction[3]) begin
+                                    //Read to accumulator
+                                    //LDAmXX
+                                    case(m_cycle)
+                                        1'b00: read_mem({1'b1, instruction[5:4]});
+                                        1'b01: write(3'b111, MEM);
+                                    endcase
+                                end
+                                else begin
+                                    //Write to memory from accumulator
+                                    //LDmXXA
+                                    case(m_cycle)
+                                        1'b00: write_mem(3'b111, 1'b1, {1'b1, instruction[5:4]}, SBUS);
+                                        1'b01: begin
+                                        end
+                                    endcase
+                                end
+                            end
                         end
 
                         3'b011: begin //16-bit Inc/Dec
                         end
 
                         3'b100: begin //8-bit Increment
-                            //TODO: Pull INC/DEC out of ALU
+                            //TODO: Pull INC/DEC out of ALU?
                             if(instruction[5:3] != 3'b110) begin
                                 m_count = 2'd1;
                                 alu_incdec = 1'b1;
-                                begin_alu(instruction[2:0], instruction[5:3], 1'b1, 1'b1);
+                                begin_alu(instruction[2:0], instruction[5:3], 1'b1, 1'b1, 1'b0);
                                 write(instruction[5:3], ALU);
                             end
                         end
@@ -249,7 +278,7 @@ module decode(
                             if(instruction[5:3] != 3'b110) begin
                                 m_count = 2'd1; //FIXME: Same format as INC. Condense?
                                 alu_incdec = 1'b1;
-                                begin_alu(instruction[2:0], instruction[5:3], 1'b1, 1'b1);
+                                begin_alu(instruction[2:0], instruction[5:3], 1'b1, 1'b1, 1'b0);
                                 write(instruction[5:3], ALU);
                             end
                         end
@@ -270,7 +299,7 @@ module decode(
 
                         3'b111: begin //Accumulator Rotates, Misc. ALU operations
                             m_count = 2'd1;
-                            begin_alu(instruction[5:3], instruction[2:0], 1'b1, 1'b0);
+                            begin_alu(instruction[5:3], instruction[2:0], 1'b1, 1'b0, 1'b0);
                                 //misc = instruction[5]; //Misc ALU instructions
                                 //reg_rd_addr = instruction[2:0]; //Doesn't matter in this scenario. Will matter for extension rotates
                                 //reg_rd_en = 1'b1; //Not for SCF/CCF
@@ -295,20 +324,14 @@ module decode(
                     else if(instruction[5:3] == 3'b110) begin
                         //Load to memory
                         m_count = 2'd2;
-                        //M-Cycle 1:
-                        //reg_rd_addr = instruction[2:0]; //Source
-                        //reg_rd_en = 1'b1;
-                        
-
-                        //Place value on d_bus
-                        //Place HL on addr
-                        //mem_WE = 1'b1;
-                        //M-Cycle 2:
-                        //Write d_bus to mem
-                        
+                        case(m_cycle)
+                            2'b00: write_mem(instruction[2:0], 1'b1, instruction[5:3], SBUS);
+                            2'b01: begin
+                            end
+                        endcase
                     end
                     else if(instruction[2:0] == 3'b110) begin
-                        //Load to memory bus (HL)
+                        //Load from memory bus (HL)
                         m_count = 2'd2;
                         case(m_cycle)
                             2'b00: begin
@@ -328,9 +351,23 @@ module decode(
                     //8-bit Accumulator Arithmetic and logic
                     //op[5:3] = operation
                     //op[2:0] = reg select
-                    m_count = 2'd1;
-                    begin_alu(instruction[5:3], instruction[2:0], 1'b0, 1'b1);
-                    write(3'b111, ALU);
+                    if(instruction[2:0] != 3'b110) begin
+                        m_count = 2'd1;
+                        begin_alu(instruction[5:3], instruction[2:0], 1'b0, 1'b1, 1'b0);
+                        write(3'b111, ALU);
+                    end
+                    else begin
+                        m_count = 2'd2;
+                        case(m_cycle)
+                            2'b00: begin
+                                read_mem(instruction[2:0]);
+                            end
+                            2'b01: begin
+                                begin_alu(instruction[5:3], instruction[2:0], 1'b0, 1'b1, 1'b1);
+                                write(3'b111, ALU);
+                            end
+                        endcase
+                    end
 
                 end
 
@@ -340,7 +377,7 @@ module decode(
                     case(instruction[2:0])
                         3'b011: begin
                             if(instruction[5:3] == 3'b001) begin
-                                m_count = 2'd2; //FIXME: Combing M-Cycle timing for extension instructions
+                                m_count = 2'd2;
                                 case(m_cycle)
                                     2'b00: read_mem(3'b000); //Read next program byte
                                     2'b01: begin
@@ -350,30 +387,70 @@ module decode(
                                 endcase
                             end
                         end
+                        3'b110: begin //8-bit Immediate Arithmetic
+                            m_count = 2'd2;
+                            case(m_cycle)
+                                2'b00: begin
+                                    read_mem(3'b000); //Read next instruction byte
+                                end
+                                2'b01: begin
+                                    begin_alu(instruction[5:3], 3'b111, 1'b0, 1'b0, 1'b1);
+                                    if(t_cycle == 2'b00) reg_inc_pc <= 1'b1;
+                                    write(3'b111, ALU); //Write to accumulator from memory bus
+                                end
+                            endcase
+                        end
                     endcase
                 end
             endcase
         end
         else begin //CB Extension instructions
             case(prefix)
-                2'b00: begin //Arithmetic
+                2'b00: begin //Register Arithmetic
                     if(instruction[2:0] !== 3'b110) begin
                         m_count = 2'd2;
-                        begin_alu(instruction[5:3], instruction[2:0], 1'b0, 1'b1);
+                        begin_alu(instruction[5:3], instruction[2:0], 1'b0, 1'b1, 1'b0);
                         write(instruction[2:0], ALU);
+                    end
+                    else begin //mHL Arithmetic
+                        m_count = 3'd4;
+                        case(m_cycle)
+                            //Read
+                            2'b01: read_mem(instruction[2:0]);
+                            2'b10: begin
+                                //Execute
+                                begin_alu(instruction[5:3], instruction[2:0], 1'b0, 1'b1, 1'b1);
+                                //Commit
+                                write_mem(3'b111, 1'b0, instruction[2:0], ALU);
+                            end
+                            2'b11: begin 
+                                //Fetch next instruction
+                            end
+                        endcase
                     end
                 end
                 2'b01: begin //Bit Evaluate
                     if(instruction[2:0] !== 3'b110) begin
                         m_count = 2'd2;
-                        begin_alu({1'b0, instruction[7:6]}, instruction[2:0], 1'b1, 1'b1);
+                        begin_alu({1'b0, instruction[7:6]}, instruction[2:0], 1'b1, 1'b1, 1'b0);
+                    end
+                    else begin // mHL
+                        m_count = 2'd3;
+                        case(m_cycle)
+                            2'b01: begin
+                                read_mem(instruction[2:0]);
+                            end
+                            2'b10: begin
+                                begin_alu({1'b0, instruction[7:6]}, instruction[2:0], 1'b1, 1'b1, 1'b1);
+                            end
+                        endcase
                     end
                     alu_bit_index = instruction[5:3];
                 end
                 2'b10: begin //Bit Reset
                     if(instruction[2:0] !== 3'b110) begin
                         m_count = 2'd2;
-                        begin_alu({1'b0, instruction[7:6]}, instruction[2:0], 1'b1, 1'b1);
+                        begin_alu({1'b0, instruction[7:6]}, instruction[2:0], 1'b1, 1'b1, 1'b0);
                         write(instruction[2:0], ALU);
                     end
                     alu_bit_index = instruction[5:3];
@@ -381,7 +458,7 @@ module decode(
                 2'b11: begin //Bit Set
                     if(instruction[2:0] !== 3'b110) begin
                         m_count = 2'd2;
-                        begin_alu({1'b0, instruction[7:6]}, instruction[2:0], 1'b1, 1'b1);
+                        begin_alu({1'b0, instruction[7:6]}, instruction[2:0], 1'b1, 1'b1, 1'b0);
                         write(instruction[2:0], ALU);
                     end
                     alu_bit_index = instruction[5:3];
@@ -398,18 +475,20 @@ module decode(
         reg_wr_en = t_cycle > 2'b01 ? 1'b1 : 1'b0;
     endtask
 
-    task begin_alu; //begin_alu(alu_op, reg_rd_addr, misc, reg_rd_en);
+    task begin_alu; //begin_alu(alu_op, reg_rd_addr, misc, reg_rd_en, alu_src_sel);
         input [2:0] op;
         input [2:0] task_rd_addr;
         input task_misc;
         input task_rd_en;
+        input task_alu_src_sel;
         alu_op = op;
         misc = task_misc; //Misc ALU instructions
         reg_rd_addr = task_rd_addr; //Only really necessary for the Rotates
         reg_rd_en = task_rd_en;
+        alu_src_sel = task_alu_src_sel;
 
         //reg_src_sel = ALU;
-        alu_begin = t_cycle > 2'b01 ? 1'b1 : 1'b0; //Generates ALU begin signal
+        if(t_cycle == 2'b10) alu_begin = 1'b1; //Set at T2, Reset at next T1
     endtask
 
     task read_mem;
@@ -417,10 +496,10 @@ module decode(
         //Read From
         input [2:0] task_rd_addr;
         reg_drive_addr = 1'b1;
-        reg_rd_addr = task_rd_addr;
+        reg_mem_addr_sel = task_rd_addr;
         //PC = 000
         //TP = 001
-        //
+        //FF+n/FF+C?
         //BC = 100
         //DE = 101
         //HL = 110
@@ -431,11 +510,21 @@ module decode(
 
     endtask
 
-    task write_mem;
-        input [3:0] task_wr_addr;
-        input [7:0] task_data;
+    task write_mem; //write_mem(reg_rd_addr, reg_rd_en, reg_mem_addr_sel, reg_src_sel)
+        input [2:0] task_rd_addr; //Register address to 8-bit Data Register
+        input       task_rd_en; //Enable register file output to loopback
+        input [2:0] task_mem_addr_sel; //Register address to 16-bit Address in Regfile
+        input [1:0] task_src_sel;
         reg_drive_addr = 1'b1;
-        reg_wr_addr = task_wr_addr;
+        reg_mem_addr_sel = task_mem_addr_sel;
+        reg_wr_addr <= 3'b110;
 
+        reg_rd_addr = task_rd_addr;
+        reg_rd_en <= task_rd_en;
+        reg_src_sel = task_src_sel; //Set mem_data_out source to register output
+        //wr_enable handled by top level
+        if(t_cycle == 2'b10) begin
+            wr = 1'b1;
+        end
     endtask
 endmodule
