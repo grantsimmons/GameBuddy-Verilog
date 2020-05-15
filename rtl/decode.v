@@ -98,11 +98,10 @@ module decode(
         case(t_cycle)
             2'b00: begin //T-Cycle 1
                 rd = 1'b0;
-                reg_inc_pc = 1'b0;
                 alu_begin = 1'b0;
             end
             2'b01: begin //T-Cycle 2
-                reg_inc_pc <= 1'b0;
+                reg_inc_pc = 1'b0;
                 if(next_cycle[4:2] == 3'b000) begin
                     //Put program counter on address bus if next M-cycle is a M1 cycle
                 end
@@ -453,6 +452,22 @@ module decode(
                         begin_alu({1'b0, instruction[7:6]}, instruction[2:0], 1'b1, 1'b1, 1'b0);
                         write(instruction[2:0], ALU);
                     end
+                    else begin //mHL Reset
+                        m_count = 3'd4;
+                        case(m_cycle)
+                            //Read
+                            2'b01: read_mem(instruction[2:0]);
+                            2'b10: begin
+                                //Execute
+                                begin_alu({1'b0, instruction[7:6]}, instruction[2:0], 1'b1, 1'b1, 1'b1);
+                                //Commit
+                                write_mem(3'b111, 1'b0, instruction[2:0], ALU);
+                            end
+                            2'b11: begin 
+                                //Fetch next instruction
+                            end
+                        endcase
+                    end
                     alu_bit_index = instruction[5:3];
                 end
                 2'b11: begin //Bit Set
@@ -460,6 +475,22 @@ module decode(
                         m_count = 2'd2;
                         begin_alu({1'b0, instruction[7:6]}, instruction[2:0], 1'b1, 1'b1, 1'b0);
                         write(instruction[2:0], ALU);
+                    end
+                    else begin //mHL Set
+                        m_count = 3'd4;
+                        case(m_cycle)
+                            //Read
+                            2'b01: read_mem(instruction[2:0]);
+                            2'b10: begin
+                                //Execute
+                                begin_alu({1'b0, instruction[7:6]}, instruction[2:0], 1'b1, 1'b1, 1'b1);
+                                //Commit
+                                write_mem(3'b111, 1'b0, instruction[2:0], ALU);
+                            end
+                            2'b11: begin 
+                                //Fetch next instruction
+                            end
+                        endcase
                     end
                     alu_bit_index = instruction[5:3];
                 end

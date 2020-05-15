@@ -115,7 +115,7 @@ module top(
             int_data_in = mem_data_out;
         end
         //TODO: Find out when this actually happens
-        if(t_cycle == 2'b10) begin
+        if(t_cycle == 2'b11) begin
             mem_data_in = int_data_out;
         end
     end

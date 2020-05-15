@@ -75,8 +75,8 @@ module alu(
     localparam F_ZERO  = 7; //Indicates 0 result
 
 	reg [3:0] half_res;
-    wire [4:0] op_alias;
-    assign op_alias = {ext | incdec, misc, op}; //VERIFICATION ONLY
+    wire [5:0] op_alias;
+    assign op_alias = {ext, incdec, misc, op}; //VERIFICATION ONLY
 
 	always @(t_cycle) begin
 		if(t_cycle == 2'b00) begin
@@ -91,7 +91,7 @@ module alu(
 				//op   = instruction[7:6]
 				//src  = instruction[5:3] (encoded bit number)
 				//dest = instruction[2:0] (register index)
-				case(op)
+				case({incdec, op[1:0]})
 					BIT: begin
                         //res = 8'b0 | src_data[bit_index]; //Use this if using assigned F_ZERO
                         flags_res[F_ZERO] = src_data[bit_index] == 1'b0 ? 1'b1 : 1'b0;
@@ -107,20 +107,22 @@ module alu(
                         res = src_data | (1'b1 << bit_index);
 					end
 
-					INC: begin
-						res = src_data + 1'b1;
-						flags_res[F_ZERO] = res == 8'b0 ? 1'b1 : 1'b0; //FIXME: UMM, why does this work?
-						flags_res[F_HALF] = (src_data[3:0] + 1'b1) & 5'h10 ? 1'b1 : 1'b0; //FIXME: Ditto
-						flags_res[F_SUB] = 1'b0;
-					end
+                    INC: begin
+                        res = src_data + 1'b1;
+                        flags_res[F_ZERO] = res == 8'b0 ? 1'b1 : 1'b0; //FIXME: UMM, why does this work?
+                        //flags_res[F_HALF] = (src_data[3:0] + 1'b1) & 5'h10 ? 1'b1 : 1'b0; //FIXME: Ditto
+                        flags_res[F_HALF] = res[4] ^ src_data[4]; //THIS MIGHT BE TERRIBLE I DON'T KNOW
+                        flags_res[F_SUB] = 1'b0;
+                    end
 
-					DEC: begin
-						res = src_data - 1'b1;
-						//flags_res[F_ZERO] = (src_data - 1'b1) & 8'hFF == 8'b0 ? 1'b1 : 1'b0;
-						flags_res[F_ZERO] = res == 8'b0 ? 1'b1 : 1'b0;
-						flags_res[F_HALF] = (src_data[4:0] - 1'b1) == 4'hF ? 1'b1 : 1'b0; //FIXME: Ditto
-						flags_res[F_SUB] = 1'b1;
-					end
+                    DEC: begin
+                        res = src_data - 1'b1;
+                        //flags_res[F_ZERO] = (src_data - 1'b1) & 8'hFF == 8'b0 ? 1'b1 : 1'b0;
+                        flags_res[F_ZERO] = res == 8'b0 ? 1'b1 : 1'b0;
+                        //flags_res[F_HALF] = (src_data[4:0] - 1'b1) == 4'hF ? 1'b1 : 1'b0; //FIXME: Ditto
+                        flags_res[F_HALF] = res[4] ^ src_data[4];
+                        flags_res[F_SUB] = 1'b1;
+                    end
 				endcase
 			end else begin //EXT Arithmetic instructions
 				//op   = instruction[5:3]
