@@ -1,16 +1,16 @@
 [*]
 [*] GTKWave Analyzer v3.3.86 (w)1999-2017 BSI
-[*] Fri May  1 17:07:07 2020
+[*] Tue May  5 14:56:12 2020
 [*]
 [dumpfile] "/mnt/d/Git/GameBuddy-Verilog/data/dumpfile.vcd"
-[dumpfile_mtime] "Fri May  1 17:05:02 2020"
-[dumpfile_size] 34472
+[dumpfile_mtime] "Tue May  5 05:49:42 2020"
+[dumpfile_size] 2474121
 [optimize_vcd]
 [savefile] "/mnt/d/Git/GameBuddy-Verilog/data/base.gtkw"
-[timestart] 809
+[timestart] 5796
 [size] 1920 1057
-[pos] -1 -1
-*-3.000000 1054 1555 1595 1515 356 435 636 716 995 1075 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
+[pos] 1919 -1
+*-3.000000 615 1555 1595 1515 356 435 636 716 995 1075 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1 -1
 [treeopen] tb.
 [treeopen] tb.dut.
 [treeopen] tb.dut.r1.
@@ -20,7 +20,7 @@
 [sst_vpaned_height] 318
 @200
 -Clock, Reset, Hold, and TestVector
-@22
+@420
 tb.vectornum_last[31:0]
 @28
 tb.dut.m1t1
@@ -34,8 +34,9 @@ tb.dut.d1.hold
 tb.dut.d1.reg_inc_pc
 tb.dut.r1.pc.clk
 tb.dut.r1.pc.wr_en
-@22
+@24
 tb.dut.r1.pc.data_in[15:0]
+@22
 tb.dut.r1.pc.data_out[15:0]
 @200
 -
@@ -52,26 +53,27 @@ tb.dut.d1.m_count[4:0]
 @2028
 ^1 /mnt/d/Git/GameBuddy-Verilog/alias/ops_full.alias
 tb.dut.d1.instruction_alias[8:0]
-^4 /mnt/d/Git/GameBuddy-Verilog/alias/ops.alias
+@2022
+^2 /mnt/d/Git/GameBuddy-Verilog/alias/ops.alias
 tb.dut.d1.instruction[7:0]
 @200
 -
-@201
 -ALU
+@2028
+^3 /mnt/d/Git/GameBuddy-Verilog/alias/alu_ops_full.alias
+tb.dut.a1.op_alias[5:0]
 @28
 tb.dut.d1.ext
 tb.dut.a1.incdec
 tb.dut.d1.misc
-@2028
-^2 /mnt/d/Git/GameBuddy-Verilog/alias/alu_ops_full.alias
-tb.dut.a1.op_alias[4:0]
-@28
 tb.dut.a1.alu_begin
+tb.dut.a1.src_sel
 @22
+tb.dut.a1.mem_data[7:0]
 tb.dut.a1.src_data[7:0]
 tb.dut.a1.dest_data[7:0]
 @c02028
-^3 /mnt/d/Git/GameBuddy-Verilog/alias/flags.alias
+^4 /mnt/d/Git/GameBuddy-Verilog/alias/flags.alias
 tb.dut.a1.flags_in[7:0]
 @28
 (0)tb.dut.a1.flags_in[7:0]
@@ -85,7 +87,7 @@ tb.dut.a1.flags_in[7:0]
 @1401200
 -group_end
 @c02028
-^3 /mnt/d/Git/GameBuddy-Verilog/alias/flags.alias
+^4 /mnt/d/Git/GameBuddy-Verilog/alias/flags.alias
 tb.dut.a1.flags_res[7:0]
 @28
 (0)tb.dut.a1.flags_res[7:0]
@@ -100,12 +102,23 @@ tb.dut.a1.flags_res[7:0]
 -group_end
 @22
 tb.dut.a1.res[7:0]
+@23
+tb.HL[15:0]
+@22
+tb.mHL[7:0]
 @200
 -
 -Register File
 @28
 tb.dut.r1.writeback
+tb.dut.d1.reg_mem_addr_sel[2:0]
 tb.dut.r1.rd_sel[2:0]
+tb.dut.reg_src_sel[1:0]
+@22
+tb.dut.r1.data_in[7:0]
+tb.dut.r1.data_out[7:0]
+tb.dut.r1.mem_data_out[7:0]
+@28
 tb.dut.r1.wr_sel[2:0]
 tb.dut.r1.a.wr_en
 @22
@@ -137,7 +150,7 @@ tb.dut.r1.l.data_out[7:0]
 @28
 tb.dut.r1.f.wr_en
 @2028
-^3 /mnt/d/Git/GameBuddy-Verilog/alias/flags.alias
+^4 /mnt/d/Git/GameBuddy-Verilog/alias/flags.alias
 tb.dut.r1.f.data_out[7:0]
 @200
 -
@@ -149,9 +162,31 @@ tb.dut.rd
 tb.dut.addr_bus[15:0]
 tb.dut.mem.addr_bus[15:0]
 @2022
-^4 /mnt/d/Git/GameBuddy-Verilog/alias/ops.alias
+^2 /mnt/d/Git/GameBuddy-Verilog/alias/ops.alias
 tb.dut.mem.data_out[7:0]
 @22
 tb.dut.int_data_in[7:0]
+@28
+tb.dut.mem.wr_en
+@22
+tb.dut.int_data_out[7:0]
+tb.dut.mem.data_in[7:0]
+tb.dut.mem.test[7:0]
+@200
+-
+@2028
+^1 /mnt/d/Git/GameBuddy-Verilog/alias/ops_full.alias
+tb.dut.d1.instruction_alias[8:0]
+@200
+-Clock, Reset, Hold, and TestVector
+@28
+tb.dut.m1t1
+tb.clk
+@22
+tb.dut.m_cycle[3:0]
+@28
+tb.dut.t_cycle[1:0]
+@22
+tb.dut.d1.m_count[4:0]
 [pattern_trace] 1
 [pattern_trace] 0

@@ -25,6 +25,11 @@ module tb;
 	wire [7:0] d_bus; //Eventually wire for inout
 	wire rd;
 
+    wire [15:0] HL;
+    assign HL = {dut.r1.h.data_out, dut.r1.l.data_out};
+    wire [7:0] mHL;
+    assign mHL = dut.mem.mem[{dut.r1.h.data_out, dut.r1.l.data_out}];
+
 	//top dut(.clk(clk), .rst(rst), .testing_data(dest_data), .op_next(op), .rd(rd), .d_bus(d_bus), .addr_bus(addr_bus));
 	top dut(.clk(clk), .rst(rst), .testing_data(dest_data), .data_out(d_bus), .rd(rd), .addr_bus(addr_bus));
 
@@ -40,11 +45,15 @@ module tb;
     integer i = 0;
     integer j = 0;
     integer l = 0;
+
+    reg [7:0] program_init [0:65535]; //For debugging memory accesses
+
     initial begin //Setup
         $readmemb("sim/stim.tv", testvectors); //Load test vectors
         for(l = 0; l < $size(dut.mem.mem); l = l + 1)
             dut.mem.mem[l] = 8'b0;
         $readmemb("scripts/stim.txt", dut.mem.mem); //Load program
+        $readmemb("scripts/stim.txt", program_init); //Load program
         //for(l = 0; l < $size(dut.mem.mem); l = l + 1)
         //    $display("%h: %h", l, dut.mem.mem[l]);
         clk = 0;
@@ -105,8 +114,8 @@ module tb;
             $display("\nVector number: %d (%h)", vectornum_last, vectornum_last);
             $display(" Vector: %b", {vector_op, vector_res_expected});
             $display("Vector Op Code: %b (%h)\n  Result: %b\nExpected: %b", vector_op, vector_op, res, vector_res_expected);
-            if (res[63:8] !== vector_res_expected[63:8]) begin
-            //if (res !== vector_res_expected) begin
+            //if (res[63:8] !== vector_res_expected[63:8]) begin
+            if (res !== vector_res_expected) begin
                 $display("Error:\nInstruction: %h\nExt: %b, Misc: %b\n\nRegister:   Value:    Expected: Difference:", dut.d1.instruction, ext, misc);
                 for(k = 8; k > 0; k = k - 1) begin
                     $display("%c:          %b  %b  %b", char_arr[k - 1], res[(k * DATA_SIZE)-1-:DATA_SIZE], vector_res_expected[(k * DATA_SIZE)-1-:DATA_SIZE], res[(k * DATA_SIZE)-1-:DATA_SIZE] ^ vector_res_expected[(k * DATA_SIZE)-1-:DATA_SIZE]); //%h for hex

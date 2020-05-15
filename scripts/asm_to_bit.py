@@ -76,7 +76,9 @@ if args.generate_random and args.extended:
                             binfile.write((op_alias[op_mnem_arr[index]] & 0xFF).to_bytes(1, 'little')) #Write ASCII binary
                             asmfile.write(op_mnem_arr[index] + '\n')
                             txtfile.write(bin(op_alias[op_mnem_arr[index]]).split('b')[1].zfill(8) + '\n')
+                            yikes = 0
                             if 'n' in op_mnem_arr[index]:
+                                print(op_mnem_arr[index])
                                 yikes = 1
                                 continue
                         else:
@@ -90,7 +92,7 @@ if args.generate_random and args.extended:
                                 asmfile.write(op_mnem_arr_ext[index] + '\n')
                                 txtfile.write('11001011\n')
                                 txtfile.write(bin(op_alias[op_mnem_arr_ext[index]]).split('b')[1].zfill(8) + '\n')
-                        yikes = 0
+                                yikes = 0
                     binfile.write(int('00010000', 2).to_bytes(1, 'little'))
                     txtfile.write('00010000')
                     asmfile.write('STOP')
