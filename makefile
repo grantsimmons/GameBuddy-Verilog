@@ -1,3 +1,6 @@
+ACTIVATE_DIR ?= sim/stim/latest
+STIM_NUM_OPS ?= 2000
+
 #DIRS
 SIM_DIR = sim
 RTL_DIR = rtl
@@ -42,6 +45,13 @@ BDSHOW = show -format dot -viewer xdot -prefix $(DATA_DIR)/show
 DOT = $(DATA_DIR)/show.dot
 DOTVIEWER = xdot
 
+#SOFTWARE EMULATOR
+SOFTEMU_DIR = /mnt/d/Git/GameBuddy/source
+SOFTEMU_VERIF = $(SOFTEMU_DIR)/verif.exe
+SOFTEMU_TV = $(SOFTEMU_DIR)/stim.tv
+HARDEMU_TV = sim/stim/active/stim.tv
+
+
 $(RUNNAME): $(RUNFILES) $(TESTBENCH) proj
 	$(CC) $(CFLAGS) $(RUNFILES) $(TESTBENCH)
 	$(ASM) $(RUNNAME) > $(RPTS_DIR)/$(RUNNAME).rpt
@@ -58,7 +68,10 @@ wave: $(TESTBENCHOUT) $(VIEW)
 synth: $(RUNFILES) $(SYNTHSCRIPT)
 	$(SYNTHESIS) $(RUNFILES) $(SYNTHSCRIPT) $(SYNTHOUT) $(SYNTHFLAGS) $(SYNTHLOG)
 
-netlist: $(SYNTHFILE)
+.PHONY: netlist
+netlist: $(DATA_DIR)/synthesize.v
+
+$(DATA_DIR)/synthesize.v: $(SYNTHFILE)
 	$(SYNTHESIS) -f $(SYNTHBACKEND) $(SYNTHFILE) -o $(DATA_DIR)/synthesize.v $(SYNTHFLAGS) $(SYNTHLOG)
 
 .PHONY: bd
@@ -68,3 +81,26 @@ bd: synth
 .PHONY: view
 view: $(DOT)
 	$(DOTVIEWER) $(DOT) &
+
+.PHONY: rand_stim
+rand_stim: $(ALIAS_DIR)/ops.alias $(ALIAS_DIR)/ops_full.alias $(ALIAS_DIR)/ops_full_supported.alias $(ALIAS_DIR)/supported.alias
+	python3 $(SCRIPTS_DIR)/asm_to_bit.py -n $(STIM_NUM_OPS) -r -e
+
+.PHONY: activate
+activate:
+	mkdir -p sim/stim/prevstim
+	cp sim/stim/active/stim.* sim/stim/prevstim/
+	cp $(ACTIVATE_DIR)/*.bin sim/stim/active/stim.bin
+	cp $(ACTIVATE_DIR)/*.txt sim/stim/active/stim.txt
+	cp $(ACTIVATE_DIR)/*.asm sim/stim/active/stim.asm
+
+$(HARDEMU_TV): $(SOFTEMU_VERIF) activate
+	cp $(HARDEMU_TV) sim/stim/prevstim/
+	$(SOFTEMU_VERIF)
+	cp $(SOFTEMU_TV) $(HARDEMU_TV)
+
+.PHONY: vector
+vector: $(HARDEMU_TV)
+
+.PHONY: run_new_rand
+run_new_rand: rand_stim vector run

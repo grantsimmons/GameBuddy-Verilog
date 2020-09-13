@@ -1,14 +1,17 @@
 `timescale 1ns / 1ns
 module tb;
+    //Drivers
     reg clk;
 	reg rst;
 
+    //Params
     localparam DATA_SIZE = 8;
     localparam ADDR_SIZE = 16;
     localparam MEM_DEPTH = 1 << ADDR_SIZE;
     localparam OP_SIZE = 8;
     localparam RES_SIZE = 8 * 8;
 
+    //Tb Signals
     reg [OP_SIZE - 1:0] vector_op, vector_op_next;
     reg [DATA_SIZE - 1:0] src_data;
     reg [DATA_SIZE - 1:0] dest_data;
@@ -30,6 +33,8 @@ module tb;
     wire [7:0] mHL;
     assign mHL = dut.mem.mem[{dut.r1.h.data_out, dut.r1.l.data_out}];
 
+    reg error_in_compare;
+
 	//top dut(.clk(clk), .rst(rst), .testing_data(dest_data), .op_next(op), .rd(rd), .d_bus(d_bus), .addr_bus(addr_bus));
 	top dut(.clk(clk), .rst(rst), .testing_data(dest_data), .data_out(d_bus), .rd(rd), .addr_bus(addr_bus));
 
@@ -49,11 +54,11 @@ module tb;
     reg [7:0] program_init [0:65535]; //For debugging memory accesses
 
     initial begin //Setup
-        $readmemb("sim/stim.tv", testvectors); //Load test vectors
+        $readmemb("sim/stim/active/stim.tv", testvectors); //Load test vectors
         for(l = 0; l < $size(dut.mem.mem); l = l + 1)
             dut.mem.mem[l] = 8'b0;
-        $readmemb("scripts/stim.txt", dut.mem.mem); //Load program
-        $readmemb("scripts/stim.txt", program_init); //Load program
+        $readmemb("sim/stim/active/stim.txt", dut.mem.mem); //Load program
+        $readmemb("sim/stim/active/stim.txt", program_init); //Load program (sanity check)
         //for(l = 0; l < $size(dut.mem.mem); l = l + 1)
         //    $display("%h: %h", l, dut.mem.mem[l]);
         clk = 0;
@@ -68,6 +73,7 @@ module tb;
         errors = 0;
 		rst = 0; #2; rst = 1;
         dest_data = 1;
+        error_in_compare = 0;
     end
 
 	initial begin //Clock
@@ -83,6 +89,7 @@ module tb;
             running <= 1'b1;
         end
         if(~dut.d1.hold) begin
+            error_in_compare = 1'b0; //Reset testbench error signal for this clock
             #1; {vector_op_next, vector_res_expected_next} <= testvectors[vectornum];
             vectornum_last <= vectornum; //Because of pipeline, Last op is tested, so we use vectornum_last
             vectornum = vectornum + 1;
@@ -116,6 +123,7 @@ module tb;
             $display("Vector Op Code: %b (%h)\n  Result: %b\nExpected: %b", vector_op, vector_op, res, vector_res_expected);
             //if (res[63:8] !== vector_res_expected[63:8]) begin
             if (res !== vector_res_expected) begin
+                error_in_compare = 1'b1;
                 $display("Error:\nInstruction: %h\nExt: %b, Misc: %b\n\nRegister:   Value:    Expected: Difference:", dut.d1.instruction, ext, misc);
                 for(k = 8; k > 0; k = k - 1) begin
                     $display("%c:          %b  %b  %b", char_arr[k - 1], res[(k * DATA_SIZE)-1-:DATA_SIZE], vector_res_expected[(k * DATA_SIZE)-1-:DATA_SIZE], res[(k * DATA_SIZE)-1-:DATA_SIZE] ^ vector_res_expected[(k * DATA_SIZE)-1-:DATA_SIZE]); //%h for hex

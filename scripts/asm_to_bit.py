@@ -1,4 +1,6 @@
+#!/usr/bin/python3
 import sys
+import os
 import argparse
 #from random import randrange
 import random
@@ -17,11 +19,11 @@ parser.add_argument('-i', '--identifier', default=None)
 parser.add_argument('-e', '--extended', action='store_true')
 args = parser.parse_args()
 
+
 if args.generate_random and not args.extended:
     seed = args.seed if args.seed else int(time.time())
     random.seed(seed)
-    print(seed)
-    with open("../alias/supported.alias", 'r') as alias:
+    with open("alias/supported.alias", 'r') as alias: #FIXME: Make this an environment variable
         op_mnem_arr = []
         op_alias = {}
         version = 0
@@ -32,9 +34,16 @@ if args.generate_random and not args.extended:
             (bin_rep, curr_op) = op_line.split(' ')
             op_alias[curr_op.strip()]= int(bin_rep, 2) #Instruction Mnemonic = Key, Op Code = Value
             op_mnem_arr.append(curr_op.strip())
-        with open("rand_stim_{}_v{}_s{}{}.bin".format(seed, version, args.number, '_{}'.format(args.identifier) if args.identifier else ''), 'w+b') as binfile:
-            with open("rand_stim_{}_v{}_s{}{}.asm".format(seed, version, args.number, '_{}'.format(args.identifier) if args.identifier else ''), 'w') as asmfile:
-                with open("rand_stim_{}_v{}_s{}{}.txt".format(seed, version, args.number, '_{}'.format(args.identifier) if args.identifier else ''), 'w') as txtfile:
+        stimpath = "sim/stim/" #FIXME: Make this a environment variable
+        filename = "rand_stim_{}_v{}_s{}{}".format(seed, version, args.number, '_{}'.format(args.identifier) if args.identifier else '')
+        dirname = stimpath + filename
+        os.mkdir(dirname)
+        os.chdir(dirname)
+        os.unlink('../latest')
+        os.symlink(filename, '../latest')
+        with open(filename + ".bin", 'w+b') as binfile:
+            with open(filename + ".asm", 'w') as asmfile:
+                with open(filename + ".txt", 'w') as txtfile:
                     for i in range(args.number):
                         randnum = random.randint(0,len(op_mnem_arr)-1)
                         binfile.write(op_alias[op_mnem_arr[randnum]].to_bytes(1, 'little')) #Write ASCII binary
@@ -43,13 +52,13 @@ if args.generate_random and not args.extended:
                     binfile.write(int('00010000', 2).to_bytes(1, 'little'))
                     txtfile.write('00010000')
                     asmfile.write('STOP')
-    sys.exit("Random file generated with seed {:d} using Version {} of supported alias".format(seed, version))
+    print("Random file generated with seed {:d} using Version {} of supported alias".format(seed, version))
+    sys.exit(0)
 
 if args.generate_random and args.extended:
     seed = args.seed if args.seed else int(time.time())
     random.seed(seed)
-    print(seed)
-    with open("../alias/ops_full_supported.alias", 'r') as alias:
+    with open("alias/ops_full_supported.alias", 'r') as alias:
         op_mnem_arr = []
         op_mnem_arr_ext = []
         op_alias = {}
@@ -65,42 +74,55 @@ if args.generate_random and args.extended:
                 op_mnem_arr.append(curr_op.strip())
             else:
                 op_mnem_arr_ext.append(curr_op.strip())
-        with open("rand_stim_{}_v{}_s{}{}.bin".format(seed, version, args.number, '_{}'.format(args.identifier) if args.identifier else ''), 'w+b') as binfile:
-            with open("rand_stim_{}_v{}_s{}{}.asm".format(seed, version, args.number, '_{}'.format(args.identifier) if args.identifier else ''), 'w') as asmfile:
-                with open("rand_stim_{}_v{}_s{}{}.txt".format(seed, version, args.number, '_{}'.format(args.identifier) if args.identifier else ''), 'w') as txtfile:
-                    yikes = 0
+        stimpath = "sim/stim/" #FIXME: Make this a environment variable
+        filename = "rand_stim_{}_v{}_s{}{}".format(seed, version, args.number, '_{}'.format(args.identifier) if args.identifier else '')
+        dirname = stimpath + filename
+        os.mkdir(dirname)
+        os.chdir(dirname)
+        os.unlink('../latest')
+        os.symlink(filename, '../latest')
+        with open(filename + ".bin", 'w+b') as binfile:
+            with open(filename + ".asm", 'w') as asmfile:
+                with open(filename + ".txt", 'w') as txtfile:
                     for i in range(args.number):
                         randnum = random.randint(0,1)
-                        if randnum == 0:
-                            index = random.randint(0,len(op_mnem_arr)-1)
+                        if randnum == 0: #Base instructions
+                            index = random.randint(0,len(op_mnem_arr)-1) #Random base instruction
                             binfile.write((op_alias[op_mnem_arr[index]] & 0xFF).to_bytes(1, 'little')) #Write ASCII binary
                             asmfile.write(op_mnem_arr[index] + '\n')
                             txtfile.write(bin(op_alias[op_mnem_arr[index]]).split('b')[1].zfill(8) + '\n')
-                            yikes = 0
-                            if 'n' in op_mnem_arr[index]:
-                                print(op_mnem_arr[index])
-                                yikes = 1
+                            if 'nn' in op_mnem_arr[index]:
+                                randop = random.randint(0,255)
+                                binfile.write(randop.to_bytes(1, 'little'))
+                                asmfile.write("{:2x}".format(randop) + '\n')
+                                txtfile.write(bin(randop).split('b')[1].zfill(8) + '\n')
+                                randop = random.randint(0,255)
+                                binfile.write(randop.to_bytes(1, 'little'))
+                                asmfile.write("{:2x}".format(randop) + '\n')
+                                txtfile.write(bin(randop).split('b')[1].zfill(8) + '\n')
                                 continue
-                        else:
-                            if yikes:
-                                if int(op_alias[op_mnem_arr_ext[index]] & 0xFF) not in op_alias.values():
-                                    continue
-                            else:
-                                index = random.randint(0,len(op_mnem_arr_ext)-1)
-                                binfile.write(int('11001011', 2).to_bytes(1, 'little'))
-                                binfile.write((op_alias[op_mnem_arr_ext[index]] & 0xFF).to_bytes(1, 'little')) #Write ASCII binary
-                                asmfile.write(op_mnem_arr_ext[index] + '\n')
-                                txtfile.write('11001011\n')
-                                txtfile.write(bin(op_alias[op_mnem_arr_ext[index]]).split('b')[1].zfill(8) + '\n')
-                                yikes = 0
+                            elif 'n' in op_mnem_arr[index]:
+                                randop = random.randint(0,255)
+                                binfile.write(randop.to_bytes(1, 'little'))
+                                asmfile.write("{:2x}".format(randop) + '\n')
+                                txtfile.write(bin(randop).split('b')[1].zfill(8) + '\n')
+                                continue
+                        else: #Extensions
+                            index = random.randint(0,len(op_mnem_arr_ext)-1)
+                            binfile.write(int('11001011', 2).to_bytes(1, 'little'))
+                            binfile.write((op_alias[op_mnem_arr_ext[index]] & 0xFF).to_bytes(1, 'little')) #Write ASCII binary
+                            asmfile.write(op_mnem_arr_ext[index] + '\n')
+                            txtfile.write('11001011\n')
+                            txtfile.write(bin(op_alias[op_mnem_arr_ext[index]]).split('b')[1].zfill(8) + '\n')
                     binfile.write(int('00010000', 2).to_bytes(1, 'little'))
                     txtfile.write('00010000')
                     asmfile.write('STOP')
-    sys.exit("Random file generated with seed {:d} using Version {} of supported alias".format(seed, version))
+    print("Random file generated with seed {:d} using Version {} of supported alias".format(seed, version))
+    sys.exit(0)
 
 if args.extended:
     print("Using experimental extension system")
-    with open("../alias/ops_full.alias", 'r') as alias:
+    with open("alias/ops_full.alias", 'r') as alias:
         op_alias = {} #OP dictionary
         op_ext_alias = {} #EXTOP dictionary
         for op_line in alias:
@@ -128,7 +150,7 @@ if args.extended:
 
 
 else:
-    with open("../alias/ops.alias", 'r') as alias:
+    with open("alias/ops.alias", 'r') as alias:
         op_alias = {} #OP hash table
         for op_line in alias:
             (bin_rep, curr_op) = op_line.split(' ')
