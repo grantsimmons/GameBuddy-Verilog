@@ -1,4 +1,4 @@
-ACTIVATE_DIR ?= sim/stim/latest
+ACTIVATE_DIR ?= latest
 STIM_NUM_OPS ?= 2000
 
 #DIRS
@@ -47,7 +47,7 @@ DOTVIEWER = xdot
 
 #SOFTWARE EMULATOR
 SOFTEMU_DIR = /mnt/d/Git/GameBuddy/source
-SOFTEMU_VERIF = $(SOFTEMU_DIR)/verif.exe
+SOFTEMU_VERIF = $(SOFTEMU_DIR)/verif.out
 SOFTEMU_TV = $(SOFTEMU_DIR)/stim.tv
 HARDEMU_TV = sim/stim/active/stim.tv
 
@@ -82,25 +82,21 @@ bd: synth
 view: $(DOT)
 	$(DOTVIEWER) $(DOT) &
 
-.PHONY: rand_stim
-rand_stim: $(ALIAS_DIR)/ops.alias $(ALIAS_DIR)/ops_full.alias $(ALIAS_DIR)/ops_full_supported.alias $(ALIAS_DIR)/supported.alias
+.PHONY: gen_rand_stim
+gen_rand_stim: $(ALIAS_DIR)/ops.alias $(ALIAS_DIR)/ops_full.alias $(ALIAS_DIR)/ops_full_supported.alias $(ALIAS_DIR)/supported.alias
 	python3 $(SCRIPTS_DIR)/asm_to_bit.py -n $(STIM_NUM_OPS) -r -e
 
-.PHONY: activate
+.PHONY: activate_stim
 activate:
-	mkdir -p sim/stim/prevstim
-	cp sim/stim/active/stim.* sim/stim/prevstim/
-	cp $(ACTIVATE_DIR)/*.bin sim/stim/active/stim.bin
-	cp $(ACTIVATE_DIR)/*.txt sim/stim/active/stim.txt
-	cp $(ACTIVATE_DIR)/*.asm sim/stim/active/stim.asm
+	rm -f sim/stim/active
+	ln -s $(ACTIVATE_DIR) sim/stim/active
 
 $(HARDEMU_TV): $(SOFTEMU_VERIF) activate
-	cp $(HARDEMU_TV) sim/stim/prevstim/
 	$(SOFTEMU_VERIF)
 	cp $(SOFTEMU_TV) $(HARDEMU_TV)
 
-.PHONY: vector
-vector: $(HARDEMU_TV)
+.PHONY: gen_vector
+gen_vector: $(HARDEMU_TV)
 
 .PHONY: run_new_rand
-run_new_rand: rand_stim vector run
+run_new_rand: gen_rand_stim gen_vector run

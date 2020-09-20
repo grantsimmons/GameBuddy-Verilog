@@ -6,6 +6,7 @@ import argparse
 import random
 from datetime import datetime
 import time
+from pathlib import Path
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-f', '--file', default=None)
@@ -39,11 +40,15 @@ if args.generate_random and not args.extended:
         dirname = stimpath + filename
         os.mkdir(dirname)
         os.chdir(dirname)
-        os.unlink('../latest')
+        if os.path.exists('../latest'):
+            os.unlink('../latest')
         os.symlink(filename, '../latest')
-        with open(filename + ".bin", 'w+b') as binfile:
-            with open(filename + ".asm", 'w') as asmfile:
-                with open(filename + ".txt", 'w') as txtfile:
+        if not os.path.exists('../active'):
+            os.symlink(filename, '../active')
+        Path(filename + '.info').touch()
+        with open("stim.bin", 'w+b') as binfile:
+            with open("stim.asm", 'w') as asmfile:
+                with open("stim.txt", 'w') as txtfile:
                     for i in range(args.number):
                         randnum = random.randint(0,len(op_mnem_arr)-1)
                         binfile.write(op_alias[op_mnem_arr[randnum]].to_bytes(1, 'little')) #Write ASCII binary
@@ -79,11 +84,15 @@ if args.generate_random and args.extended:
         dirname = stimpath + filename
         os.mkdir(dirname)
         os.chdir(dirname)
-        os.unlink('../latest')
+        if os.path.exists('../latest'):
+            os.unlink('../latest')
         os.symlink(filename, '../latest')
-        with open(filename + ".bin", 'w+b') as binfile:
-            with open(filename + ".asm", 'w') as asmfile:
-                with open(filename + ".txt", 'w') as txtfile:
+        if not os.path.exists('../active'):
+            os.symlink(filename, '../active')
+        Path(filename + '.info').touch()
+        with open("stim.bin", 'w+b') as binfile:
+            with open("stim.asm", 'w') as asmfile:
+                with open("stim.txt", 'w') as txtfile:
                     for i in range(args.number):
                         randnum = random.randint(0,1)
                         if randnum == 0: #Base instructions
