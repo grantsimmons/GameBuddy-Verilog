@@ -17,7 +17,7 @@ module decode(
         //MEM = 2'b10;
         //DEBUG = 2'b11;
     output wire         reg_writeback,
-    output reg          reg_inc_pc,
+    output wire         reg_pc_wr_en,
     output reg          alu_begin,
     output reg [2:0]    alu_op,
     output reg [7:0]    alu_src_data,
@@ -42,9 +42,10 @@ module decode(
     assign instruction_alias = {ext, instruction};
 
     //Timing Controls
-    reg [4:0] cycle, next_cycle; //3 for Max M-Cycle count, 2 for T-Cycle count
+    reg [4:0] m_count; //The number of M-Cycles in current instruction
+    reg [4:0] cycle, next_cycle; //3 bits for Max M-Cycle count, 2 bits for T-Cycle count
     wire [5:0] next_cycle_high; //Next cycle count rounded up, if upper bits match m_count, next cycle is masked with 0x3
-    
+
     //Timing assignments
     assign next_cycle_high = {1'b0, cycle} + 1'b1;
     assign m_cycle = cycle[4:2];
@@ -52,6 +53,21 @@ module decode(
     
     assign m1t1 = cycle == 0 ? 1'b1 : 1'b0;
     assign reg_writeback = t_cycle == 2'b11 ? 1'b1 : 1'b0; //Register writeback clock (T3)
+
+	//PC Sticky Wr_En
+	reg m1_next_cycle;
+	reg reg_inc_pc;
+
+	always @(t_cycle or m_count or m_cycle) begin
+		if(t_cycle == 2'b11 && (m_count - m_cycle == 1'b1) && ~hold) begin
+			m1_next_cycle = 1'b1;
+		end
+		if(t_cycle == 2'b01) begin
+			m1_next_cycle = 1'b0;
+		end
+	end
+
+	assign reg_pc_wr_en = m1_next_cycle | reg_inc_pc;
 
     //FETCH
     always @(m1t1 or data_bus_in) begin
@@ -68,8 +84,6 @@ module decode(
             instruction = data_bus_in; //Fetch extension instruction from memory buffer
         end
     end
-
-    reg [4:0] m_count; //The number of M-Cycles in current instruction
 
     //Timing Loop and Reset Values
     always @(posedge clk or negedge rst) begin
@@ -116,10 +130,8 @@ module decode(
                 end
             end
             2'b11: begin //T-Cycle 4
-                if(hold) begin
-                    hold <= 1'b0;
-                end
                 if(~clk) begin
+                    hold <= 1'b0;
                     wr <= 1'b0; //Memory write latched on T4 falling
                 end
             end
@@ -180,16 +192,14 @@ module decode(
                                         case(m_cycle)
                                             2'b00: begin //M1
                                                 read_mem(2'b000); //Read first byte (LSB)
+                                                if(t_cycle == 2'b11) reg_inc_pc = 1'b1;
                                             end
                                             2'b01: begin //M2
-                                                if(t_cycle == 2'b00) reg_inc_pc <= 1'b1;
-                                                //reg_inc_pc <= cycle == 3'b100 ? 1'b1 : 1'b0; //Increment PC
                                                 read_mem(2'b000); //Read second byte (MSB)
                                                 write(3'b001, MEM);
+                                                if(t_cycle == 2'b11) reg_inc_pc = 1'b1;
                                             end
                                             2'b10: begin //M3
-                                                if(t_cycle == 2'b00) reg_inc_pc <= 1'b1;
-                                                //reg_inc_pc <= cycle == 4'b1000 ? 1'b1 : 1'b0; //Increment PC
                                                 write(3'b000, MEM);
                                             end
                                         endcase
@@ -198,16 +208,14 @@ module decode(
                                         case(m_cycle)
                                             2'b00: begin //M1
                                                 read_mem(2'b000); //Read first byte (LSB)
+                                                if(t_cycle == 2'b11) reg_inc_pc = 1'b1;
                                             end
                                             2'b01: begin //M2
-                                                if(t_cycle == 2'b00) reg_inc_pc <= 1'b1;
-                                                //reg_inc_pc <= cycle == 3'b100 ? 1'b1 : 1'b0; //Increment PC
                                                 read_mem(2'b000); //Read second byte (MSB)
                                                 write(3'b011, MEM);
+                                                if(t_cycle == 2'b11) reg_inc_pc = 1'b1;
                                             end
                                             2'b10: begin //M3
-                                                if(t_cycle == 2'b00) reg_inc_pc <= 1'b1;
-                                                //reg_inc_pc <= cycle == 4'b1000 ? 1'b1 : 1'b0; //Increment PC
                                                 write(3'b010, MEM);
                                             end
                                         endcase
@@ -216,14 +224,14 @@ module decode(
                                         case(m_cycle)
                                             2'b00: begin //M1
                                                 read_mem(2'b000); //Read first byte (LSB)
+                                                if(t_cycle == 2'b11) reg_inc_pc = 1'b1;
                                             end
                                             2'b01: begin //M2
-                                                if(t_cycle == 2'b00) reg_inc_pc <= 1'b1;
                                                 read_mem(2'b000); //Read second byte (MSB)
                                                 write(3'b101, MEM);
+                                                if(t_cycle == 2'b11) reg_inc_pc = 1'b1;
                                             end
                                             2'b10: begin //M3
-                                                if(t_cycle == 2'b00) reg_inc_pc <= 1'b1;
                                                 write(3'b100, MEM);
                                             end
                                         endcase
@@ -288,9 +296,9 @@ module decode(
                                 2'b00: begin
                                     read_mem(3'b000); //PC
                                     //Increment PC
+                                    if(t_cycle == 2'b11) reg_inc_pc = 1'b1;
                                 end
                                 2'b01: begin
-                                    if(t_cycle == 2'b00) reg_inc_pc <= 1'b1;
                                     write(instruction[5:3], MEM);
                                 end
                             endcase
@@ -378,10 +386,12 @@ module decode(
                             if(instruction[5:3] == 3'b001) begin
                                 m_count = 2'd2;
                                 case(m_cycle)
-                                    2'b00: read_mem(3'b000); //Read next program byte
+									2'b00: begin
+										read_mem(3'b000); //Read next program byte
+                                        if(t_cycle == 2'b11) reg_inc_pc = 1'b1; //Increment PC
+									end
                                     2'b01: begin
                                         ext <= 1'b1; //Enter CB Extension mode
-                                        if(t_cycle == 2'b00) reg_inc_pc <= 1'b1; //Increment PC
                                     end
                                 endcase
                             end
@@ -391,10 +401,10 @@ module decode(
                             case(m_cycle)
                                 2'b00: begin
                                     read_mem(3'b000); //Read next instruction byte
+                                    if(t_cycle == 2'b11) reg_inc_pc = 1'b1;
                                 end
                                 2'b01: begin
                                     begin_alu(instruction[5:3], 3'b111, 1'b0, 1'b0, 1'b1);
-                                    if(t_cycle == 2'b00) reg_inc_pc <= 1'b1;
                                     write(3'b111, ALU); //Write to accumulator from memory bus
                                 end
                             endcase

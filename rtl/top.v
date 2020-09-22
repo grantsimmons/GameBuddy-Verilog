@@ -60,6 +60,7 @@ module top(
     //technically go outside of top file
 
     register_file_new   r1( .clk(clk), 
+                            .t_cycle(t_cycle),
                             .m1t1(m1t1), 
                             .writeback(d1.reg_writeback),
                             .rst(rst), 
@@ -72,7 +73,7 @@ module top(
                             .rd_en(d1.reg_rd_en), 
                             .data_in(reg_data_in), 
                             .alu_flags_in(a1.flags_res),
-                            .inc_pc(d1.reg_inc_pc),
+                            .pc_wr_en(d1.reg_pc_wr_en),
                             .data_out(reg_data_out), 
                             .mem_data_out(int_data_out),
                             .addr_bus(addr_bus)

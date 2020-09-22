@@ -1,8 +1,9 @@
 module register_file_new(
     //Inputs
     input wire          clk,
+	input wire [1:0]	t_cycle,
     input wire          m1t1,
-    input wire          writeback,
+    input wire          writeback, //posedge M1T4 rise posedge M2T1 fall
     input wire          rst,
     input wire [2:0]    wr_sel, //Internal 3-bit register address
     input wire [2:0]    rd_sel, //Internal 3-bit register address
@@ -13,7 +14,7 @@ module register_file_new(
     input wire          rd_en,
     input wire [7:0]    data_in,
     input wire [7:0]    alu_flags_in,
-    input wire          inc_pc,
+    input wire          pc_wr_en,
     //Outputs
     output reg [7:0]    data_out,
     output reg [7:0]    mem_data_out,
@@ -66,31 +67,83 @@ module register_file_new(
     register #(8) l(.clk(writeback), .rst(rst), .wr_en(demux_wr_en_l), .data_in(demux_data_l), .data_out(rdmux_data_out_l));
 
     register #(8) f(.clk(writeback), .rst(rst), .wr_en(wr_en_flags), .data_in(alu_flags_in), .data_out(flags_out)); //FIXME: Need arbitrary write for POPAF and SCF/CCF
-    //register #(8) temp_lsb(.clk(writeback), .rst(rst), .wr_en(), .data_in(), .data_out());
-    //register #(8) temp_msb(.clk(writeback), .rst(rst), .wr_en(), .data_in(), .data_out());
 
-    reg pc_wr_en;
+    //register #(8) temp_lo(.clk(writeback), .rst(rst), .wr_en(), .data_in(), .data_out());
+    //register #(8) temp_hi(.clk(writeback), .rst(rst), .wr_en(), .data_in(), .data_out());
+
+	wire [7:0] pc_alu_src_data;
+	reg [15:0] pc_alu_out;
     reg [15:0] pc_data_in;
-    wire [15:0] pc_next;
-    wire pc_write;
-    assign pc_write = m1t1 | inc_pc;
-    assign pc_next = pc_data_in + 1'b1;
-    //wire [15:0] test;
-    register #(16) pc(.clk(pc_write), .rst(rst), .data_in(pc_data_in), .wr_en(pc_wr_en));
-    //assign addr_bus = pc.data_out;
-    //register #(16) sp(.clk(clk), .rst(rst), .data_out(addr_bus));
+	wire [15:0] pc_data_out;
 
-    //PC Auto-increment for testing
-    always @(posedge pc_write or negedge rst) begin
-        if(~rst) begin
-            pc_data_in = 0;
-            pc_wr_en = 0;
-        end
-        else begin
-            pc_data_in <= pc_next;
-            pc_wr_en = 1'b1;
-        end
-    end
+	wire pc_alu_sub; //TODO: DE Output
+	assign pc_alu_sub = 1'b0;
+
+	wire [1:0] pc_src_sel; //TODO: DE Output
+	assign pc_src_sel = 2'b11;
+
+	wire pc_jump_val; //TODO: DE Output
+	assign pc_jump_val = 1'b0;
+
+
+	always @(*) begin
+		//PC MUX
+		case(pc_src_sel)
+			2'b00: begin //Reset Values
+			end
+			2'b01: begin //HL Flash Copy
+				pc_data_in = {rdmux_data_out_h, rdmux_data_out_l};
+			end
+			2'b10: begin //Temp Flash Copy
+			end
+			2'b11: begin //PC ALU
+				pc_data_in = pc_alu_out;
+			end
+		endcase
+	end
+	
+	//Anonymous PC-Next register
+	always @(posedge writeback or negedge rst) begin
+		if (~rst) begin
+			//ALU Reset conditions
+		end
+		//PC ALU
+		//FIXME: Give own module?
+		case(pc_alu_sub)
+			1'b0: begin
+				pc_alu_out = pc_data_out + (pc_jump_val ? data_in : 8'b1);
+			end
+			1'b1: begin
+				if (pc_jump_val) begin
+					pc_alu_out = pc_data_out - data_in;
+				end
+				else begin //Default to PC increment
+					pc_alu_out = pc_data_out + 8'b1;
+				end
+			end
+		endcase
+	end
+
+	wire t1;
+	assign t1 = t_cycle == 2'b00;
+
+    register #(16) pc(.clk(t1), .rst(rst), .data_in(pc_data_in), .data_out(pc_data_out), .wr_en(pc_wr_en));
+	
+    //assign addr_bus = pc.data_out;
+	//wire sp_data_out;
+    //register #(16) sp(.clk(clk), .rst(rst), .data_out(sp_data_out));
+
+    ////PC Auto-increment for testing
+    //always @(posedge pc_write or negedge rst) begin
+    //    if(~rst) begin
+    //        pc_data_in = 0;
+    //        pc_wr_en = 0;
+    //    end
+    //    else begin
+    //        pc_data_in <= pc_next;
+    //        pc_wr_en = 1'b1;
+    //    end
+    //end
 
     always @(*) begin
         if(drive_addr) begin
